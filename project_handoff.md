@@ -466,6 +466,59 @@ enterprise vision/targeting wave (8 upgrades).**
 - Verified: constraints (40 py files), test_sikuli 30, test_engine, test_ui_v2
   (image menu, raw toggle, window locator). Exe rebuilt + selftest.
 
+**Session 9 (2026-07-04/05): app-tracking windows, IDE platform wave, GitHub.**
+- openApp now returns an App handle that tracks the launched PID and waits for
+  the window; App.focus()/window() match by pid OR process exe name (backend
+  process_name via GetModuleFileNameEx / /proc/comm), so Turkish-titled
+  windows ("Adsiz - Not Defteri") are found from "notepad.exe". switchApp
+  gained contains= (exact vs substring) and process-name fallback (guarded:
+  stems < 3 chars or titles with spaces never process-match). Window control:
+  WindowRegion(title, pid) with moveTo/resize/setBounds/maximize/minimize/
+  restore/focus; backends gained move_window/window_state/process_name.
+- Editor image rename now renames the VARIABLE too (whole-document
+  word-boundary stem replace, single undo step).
+- Element Spy moved to the bottom-right of Output (split dock, scroll-area
+  compact layout); dock state version bumped to 2 so old layouts reset.
+  New Window Spy dock (Ctrl+Shift+W): all windows with title/process/pid/
+  window id/pos/size, double-click inserts App(...).
+- Pause finally real: runner passes the engine pause Event into
+  sikuli.use_pause_event; _pause_gate() blocks inside click/type/_poll/sleep.
+- Env class (getClipboard/setClipboard/getMouseLocation/getScreenSize/
+  getOS/isWindows...) + SikuliX Settings extras (ClickDelay, DelayBeforeDrag/
+  Drop/MouseDown, DefaultHighlightTime, OcrLanguage, WaitScanRate...) honored
+  in click/dragDrop/highlight/Region.text. Region/Match/Element.highlight()
+  draws a real red frame via GDI (win32gui Rectangle loop + InvalidateRect).
+- IDE platform features: tab context menu (close others/right/all, PIN via
+  orange tab text excluded from bulk close, copy path, reveal, rename file,
+  open read-only view window); Settings dialog gained a Shortcuts tab -
+  every action rebindable (QKeySequenceEdit, stored as key_<action>);
+  Find in Files Ctrl+Shift+F / Replace in Files Ctrl+Shift+R / Go to File
+  Ctrl+Shift+N (walk root, skip .venv/dist/.git, open at line); embedded
+  Terminal dock (QProcess cmd.exe /Q /K, Alt+F12) + open-system-terminal
+  button; Explorer: python.svg icons for .py (recolored SVG via temp file),
+  image/md/sikuli icons (FileIcons provider), expand/collapse buttons,
+  New Sikuli Folder (name.sikuli/name.py), drag-move, copy path, reveal;
+  Explorer root no longer jumps into opened folders (open_path keeps root
+  when the file is under it). Spinbox up/down arrows drawn (theme PNG QSS).
+- Branding: vendor/logo2.png (user's purple R) is now the logo -
+  theme.logo_pixmap prefers the file (runtime_paths.logo_path), build ico
+  derives from it automatically; vendor/icons bundled (VENDOR_DATA) and
+  logo2.png bundled (VENDOR_FILES).
+- OCR: tessdata_best eng downloaded as eng_best.traineddata; user's
+  dejavu_sans.traineddata added; _prepare upscales small crops (<40px, 2-4x
+  cubic) + bilateral filter before Otsu; Settings.OcrLanguage wired into
+  Region.text(); IDE OCR tool uses the ocr_lang setting.
+- Git: repo initialized at workspace root (main), .gitignore excludes
+  .venv*/dist/pycache/screenshots; vendor INCLUDED (largest file 96.8MB,
+  under GitHub's 100MB hard limit). First commit f3e4215. gh CLI installed;
+  push via gh repo create rpa-studio --private --source=. --push after
+  device-flow login.
+- KILAVUZ.md fully rewritten (Turkish, ASCII) covering everything; copied to
+  workspace README.md for GitHub.
+- Verified: constraints (40 files), test_sikuli 32 (window interactions,
+  Env+pause gate), test_engine, test_ui_v2 (23 icons, 6 docks, settings/
+  shortcuts/pins/sikuli-folder/search/window-spy checks). Exe rebuilt.
+
 **Immediate next action:** none required - the remaining backlog is Section 5
 (Role A known-gaps work and Role B polish, e.g. welcome tab, multi-monitor
 capture coordinates).
