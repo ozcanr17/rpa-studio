@@ -1,0 +1,9 @@
+.venv/
+.venv-build/
+dist/
+__pycache__/
+*.pyc
+rpa_studio_*.png
+rpastudio_selftest.txt
+selftest*.txt
+nuitka-crash-report.xml
