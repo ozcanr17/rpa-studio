@@ -663,7 +663,37 @@ workflow, Windows release.**
   command. Windows exe rebuilt + selftest + published as GitHub release
   windows-v1.0.0 with dist/RPAStudio.exe attached.
 
-**Immediate next action:** merge PR #1 on GitHub (session 12 changes). The
+**Session 13 (2026-07-06): full SikuliX API parity + complete docs rewrite.**
+PR #1 (session 12) was merged to main first. Then, from the user pointing at
+sikulix-2014.readthedocs.io and noting findText/Finder were missing:
+- compat/sikuli.py gained the whole missing SikuliX surface: the Finder class
+  (find/findAll/next/hasNext/findChanges over an image file, not the live
+  screen); the text/OCR search family (findText/findWord/findLine/findWords/
+  findLines/waitText/hasText/collectWords/collectLines and an OCR class); the
+  observe/event model (onAppear/onVanish/onChange, observe(InBackground),
+  stopObserver/isObserving/getEvents..., ObserveEvent); the find family
+  (findAllList/getAll/findAllByRow/Column, findBest/findAny/waitBest/waitAny,
+  has); geometry + raster (setX/Y/W/H, moveTo, morphTo, corners, grow 1/2/4-arg,
+  getRow/Col/Cell, per-region wait/scan/throw settings); dialogs (popAsk/
+  popError/input/inputText/select/popFile); multi-monitor Screen(index);
+  drag/dropAt; Match.getText/setTargetOffset; path helpers; and a `.sikuli`
+  import hook so `import name` loads name.sikuli/name.py with the API injected.
+  _EXPORTS is now 106 names. The Commands panel gained matching categories;
+  editor completion and `rpa-run --list` read from _EXPORTS automatically.
+- TUTORIAL.md (English/ASCII) and KILAVUZ.md (Turkish/UTF-8) were rewritten end
+  to end into 11 sections: every IDE panel and tool with correct shortcuts, the
+  full command reference including all new families, and explicit
+  python/.sikuli/rpa-run/pip/offline/build usage. README.md landing page
+  refreshed (right-click spy, Ctrl+3 run, setBundlePath, findText/observe/Finder
+  features, build scripts, Releases link).
+- Verified: constraint checker 48 files/0 problems; a 69-check functional suite
+  (fake backend + synthetic SIFT scenes + the real bundled Tesseract for OCR +
+  all three observe event types + the .sikuli importer + multi-monitor) all
+  green. Shipped as branch session-13-sikuli-parity, PR #2.
+
+**Immediate next action:** merge PR #2 on GitHub (session 13). Git workflow:
+direct pushes to main and merging unreviewed PRs both require explicit user
+approval in this environment; push feature branches and open PRs with gh. The
 remaining backlog is Section 5 (Role A known-gaps work and Role B polish,
 e.g. welcome tab, multi-monitor capture coordinates).
 
