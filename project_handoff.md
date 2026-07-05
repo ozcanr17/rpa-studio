@@ -519,6 +519,53 @@ enterprise vision/targeting wave (8 upgrades).**
   Env+pause gate), test_engine, test_ui_v2 (23 icons, 6 docks, settings/
   shortcuts/pins/sikuli-folder/search/window-spy checks). Exe rebuilt.
 
+**Session 10 (2026-07-05): polish wave from live feedback + verified fixes.**
+- Find in Files dialog bug fixed (stray "Replace All" button was created even
+  in find-only mode and floated over the form; now created only for replace).
+- Default shortcuts changed to the user's scheme: run Ctrl+^, pause Ctrl+4,
+  stop Ctrl+5, capture Ctrl+1/Ctrl+2, region Ctrl+Shift+D, offset
+  Ctrl+Shift+O, replace-in-files Ctrl+Shift+H (user asked Ctrl+Shift+R but
+  that collides with OCR), guide_tr F2. All rebindable in Settings.
+- VSCode-style panel toggle buttons (left/bottom/right) at the toolbar's
+  right edge; Output+Terminal+Element Spy+Window Spy are now ONE tabbed
+  bottom group (drag to split); dock state version bumped to 3.
+- Matching robustness: DPI factors widened to (1, 1.25, 0.8, 1.5, 0.67, 2,
+  0.5, 3) + edge factors (1, 1.5, 0.67); pass plan interleaved gray@1 ->
+  edge@1 -> scaled (cached features per representation); _project now
+  REJECTS implausible homographies (degenerate size, aspect drift outside
+  0.4-2.5x, scale outside 0.15-8) - this is required or garbage matches at
+  extreme factors mask the edge pass (test caught it).
+- Asset Tester gained Search (default 8 s) and Highlight (default 2 s)
+  duration boxes; find uses exists(pattern, search_s), highlight duration
+  feeds HighlightOverlay.
+- Editor: indent guide lines (MONOKAI guide color, carried through blanks).
+- Theme: violet accent family (#5b5fe0/#6e72ea/#8286f0) matching logo2,
+  rounded corners (6px) on buttons/inputs/spinboxes; images now use a
+  distinct orange picture icon vs the blue Python icon; 27 drawn icons.
+- pywinauto "Revert to STA COM threading mode" warning silenced via
+  warnings.filterwarnings in windows_backend before import.
+- Friendly error handling: runner._friendly() classifies FindFailed/
+  ElementNotFound/VisionError/OCRError/BackendError/common Python errors
+  into an explanatory red Output message with the SCRIPT LINE NUMBER and an
+  automatic screenshot (traceback still printed for tests/debugging).
+  wait(number) now sleeps like SikuliX instead of raising.
+- findElement(window=...) now also resolves the window by process name
+  (reuses _app_window ranking) so Spy locators survive localized titles.
+- Element Spy reorganized into two columns (controls left, preview+details
+  right) - fits the bottom dock without scrolling.
+- VERIFIED END-TO-END on the real desktop: openApp("notepad.exe") ->
+  focus() found Turkish-titled "prompt.txt, Not Defteri" via process name,
+  typed text landed in Notepad, window region tracked by pid, OCR read the
+  window content back. (Note: Win11 Notepad restores its session; the test
+  typed into the restored tab and was cleaned up with undo; session cache
+  verified clean afterwards.)
+- KILAVUZ.md rewritten as full Turkish documentation WITH real Turkish
+  characters (user override of the ASCII rule for KILAVUZ.md and README.md
+  ONLY - the constraint checker now exempts exactly those two file names;
+  all code stays ASCII). Copied to workspace README.md for GitHub.
+- test_sikuli 32 (numeric wait added), test_ui_v2 (27 icons, panel toggles),
+  test_engine all green; exe rebuilt + selftest; committed and pushed.
+
 **Immediate next action:** none required - the remaining backlog is Section 5
 (Role A known-gaps work and Role B polish, e.g. welcome tab, multi-monitor
 capture coordinates).

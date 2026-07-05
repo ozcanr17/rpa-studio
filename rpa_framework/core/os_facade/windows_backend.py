@@ -1,5 +1,9 @@
+import warnings
+
 from .base import OSBackend, Rect, WindowHandle, mss_grab, prepare_com_codegen, register_backend
 from ..exceptions import BackendError
+
+warnings.filterwarnings("ignore", message="Revert to STA COM threading mode")
 
 try:
     import win32gui

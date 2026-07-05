@@ -11,7 +11,8 @@ _MIN_MATCHES = 10
 _RATIO = 0.75
 _INDEX_KDTREE = 1
 _INDEX_LSH = 6
-_DPI_FACTORS = (1.0, 1.5, 0.75, 2.0)
+_DPI_FACTORS = (1.0, 1.25, 0.8, 1.5, 0.67, 2.0, 0.5, 3.0)
+_EDGE_FACTORS = (1.0, 1.5, 0.67)
 _CLAHE_STATE = {"clahe": None}
 
 
@@ -82,13 +83,21 @@ class FeatureMatcher:
     def locate(self, template, scene, min_matches=None):
         needed = self._min_matches if min_matches is None else int(min_matches)
         last_error = "insufficient features"
-        for prep, factors in ((normalize_gray, _DPI_FACTORS), (edge_map, (1.0,))):
-            try:
-                scene_feats = self._features(prep(scene))
-                tpl = prep(template)
-            except Exception as exc:
-                last_error = str(exc)
-                continue
+        cache = {}
+        plan = (
+            (normalize_gray, (1.0,)),
+            (edge_map, (1.0,)),
+            (normalize_gray, _DPI_FACTORS[1:]),
+            (edge_map, _EDGE_FACTORS[1:]),
+        )
+        for prep, factors in plan:
+            if prep not in cache:
+                try:
+                    cache[prep] = (self._features(prep(scene)), prep(template))
+                except Exception as exc:
+                    last_error = str(exc)
+                    cache[prep] = (None, None)
+            scene_feats, tpl = cache[prep]
             if scene_feats is None:
                 continue
             for factor in factors:
@@ -148,10 +157,17 @@ class FeatureMatcher:
         xs, ys = pts[:, 0], pts[:, 1]
         bw = float(xs.max() - xs.min())
         bh = float(ys.max() - ys.min())
+        if bw < 3.0 or bh < 3.0:
+            raise VisionError("degenerate projection")
+        aspect_ratio = (bw / bh) / (float(w) / max(1.0, float(h)))
+        if aspect_ratio < 0.4 or aspect_ratio > 2.5:
+            raise VisionError("implausible projection geometry")
         bbox = (float(xs.min()), float(ys.min()), bw, bh)
         center = (float(xs.mean()), float(ys.mean()))
         inliers = int(mask.sum()) if mask is not None else len(good)
         scale = factor * ((bw / max(1.0, float(w))) + (bh / max(1.0, float(h)))) / 2.0
+        if scale < 0.15 or scale > 8.0:
+            raise VisionError("implausible projection scale")
         return MatchResult(center, pts.tolist(), bbox, inliers, scale)
 
     def _cast(self, des1, des2):

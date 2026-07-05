@@ -34,6 +34,55 @@ def _put(queue, kind, data):
         pass
 
 
+def _grab_screenshot():
+    try:
+        import cv2
+        from rpa_framework.compat.sikuli import _screen
+        frame = _screen().backend.capture(None)
+        handle, image = tempfile.mkstemp(suffix=".png")
+        os.close(handle)
+        cv2.imwrite(image, frame)
+        return image
+    except Exception:
+        return None
+
+
+def _script_line(exc, path):
+    line = None
+    trace = exc.__traceback__
+    while trace is not None:
+        if trace.tb_frame.f_code.co_filename == path:
+            line = trace.tb_lineno
+        trace = trace.tb_next
+    return line
+
+
+def _friendly(exc, path):
+    name = type(exc).__name__
+    text = str(exc)
+    line = _script_line(exc, path)
+    where = " (script line {})".format(line) if line else ""
+    if name == "FindFailed" or name == "ElementNotFoundError":
+        if "image not found" in text:
+            hint = "The image file is missing. Save the capture next to your script, or check the file name."
+        elif "not found on screen" in text:
+            hint = "The target is not visible right now. Bring the window to the front, lower .similar(), or use wait/exists with a longer timeout."
+        elif "window not found" in text:
+            hint = "No window with that title or process exists. Check the name or start the application first."
+        else:
+            hint = "The element could not be located. Verify the locator with Element Spy."
+        return "{}: {}{}. {}".format(name, text, where, hint)
+    if name == "VisionError":
+        return "VisionError: {}{}. The picture could not be matched; recapture it at the current resolution and theme, or lower the similarity.".format(text, where)
+    if name == "OCRError":
+        return "OCRError: {}{}. Text reading failed; check Settings.OcrLanguage and that the area really contains text.".format(text, where)
+    if name == "BackendError":
+        return "BackendError: {}{}. A required system component is unavailable on this machine.".format(text, where)
+    if name in ("TypeError", "ValueError", "AttributeError", "NameError", "KeyError", "IndexError"):
+        return "{}: {}{}. This is a Python coding mistake in the script; the full traceback is above.".format(name, text, where)
+    return "{}: {}{}".format(name, text, where)
+
+
 def _ensure_root():
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     if root not in sys.path:
@@ -54,17 +103,7 @@ def _build_scope(path, queue, pause_event):
         _put(queue, "pass", str(message))
 
     def failed(message=""):
-        image = None
-        try:
-            import cv2
-            from rpa_framework.compat.sikuli import _screen
-            frame = _screen().backend.capture(None)
-            handle, image = tempfile.mkstemp(suffix=".png")
-            os.close(handle)
-            cv2.imwrite(image, frame)
-        except Exception:
-            image = None
-        _put(queue, "fail", {"message": str(message), "image": image})
+        _put(queue, "fail", {"message": str(message), "image": _grab_screenshot()})
 
     def wait_if_paused(poll=0.05):
         while pause_event.is_set():
@@ -109,8 +148,9 @@ def run_script(path, queue, pause_event):
         asyncio.run(_execute(path, queue, pause_event))
     except SystemExit as exc:
         exit_code = exc.code if isinstance(exc.code, int) else 0 if exc.code is None else 1
-    except Exception:
+    except Exception as exc:
         _put(queue, "stderr", traceback.format_exc())
+        _put(queue, "fail", {"message": _friendly(exc, path), "image": _grab_screenshot()})
         exit_code = 1
     _put(queue, "finished", exit_code)
     return exit_code

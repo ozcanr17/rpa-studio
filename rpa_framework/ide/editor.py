@@ -700,6 +700,30 @@ def build_editor_class(qt):
             self.viewport().update()
             self._gutter.update()
 
+        def _draw_guides(self, painter, layout, dx, dy, height):
+            space = float(self.fontMetrics().horizontalAdvance(" "))
+            if space <= 0:
+                return
+            painter.setPen(QtGui.QPen(QtGui.QColor(MONOKAI["guide"])))
+            carried = 0
+            block = self.document().firstBlock()
+            while block.isValid():
+                text = block.text()
+                stripped = text.strip()
+                indent = (len(text) - len(text.lstrip(" "))) if stripped else carried
+                if stripped:
+                    carried = indent
+                levels = indent // 4
+                if levels:
+                    rect = layout.blockBoundingRect(block)
+                    top = rect.top() - dy
+                    bottom = rect.bottom() - dy
+                    if bottom >= 0 and top <= height:
+                        for level in range(1, levels + 1):
+                            x = rect.left() + space * 4 * level - dx - 1.0
+                            painter.drawLine(QtCore.QPointF(x, top), QtCore.QPointF(x, bottom))
+                block = block.next()
+
         def paintEvent(self, event):
             super().paintEvent(event)
             painter = QtGui.QPainter(self.viewport())
@@ -707,6 +731,10 @@ def build_editor_class(qt):
             dx = float(self.horizontalScrollBar().value())
             dy = float(self.verticalScrollBar().value())
             height = self.viewport().height()
+            try:
+                self._draw_guides(painter, layout, dx, dy, height)
+            except Exception:
+                pass
             block = self.document().firstBlock()
             while block.isValid():
                 image = self._block_image(block)

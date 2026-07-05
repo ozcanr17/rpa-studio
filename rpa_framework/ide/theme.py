@@ -9,13 +9,13 @@ COLORS = {
     "panel2": "#2d2d30",
     "panel3": "#333333",
     "border": "#3f3f46",
-    "accent": "#0e639c",
-    "accenthi": "#1177bb",
-    "focus": "#007acc",
+    "accent": "#5b5fe0",
+    "accenthi": "#6e72ea",
+    "focus": "#8286f0",
     "text": "#d4d4d4",
     "bright": "#ffffff",
     "dim": "#8a8a8a",
-    "selection": "#264f78",
+    "selection": "#3b3d63",
     "hover": "#2a2d2e",
     "active": "#37373d",
     "error": "#f48771",
@@ -35,6 +35,7 @@ MONOKAI = {
     "gutterhi": "#f8f8f2",
     "selection": "#49483e",
     "error": "#f92672",
+    "guide": "#3c3d35",
 }
 
 LOGO_STOPS = ((0.0, "#22d3ee"), (0.5, "#3b82f6"), (1.0, "#8b5cf6"))
@@ -60,7 +61,7 @@ QMenu::item:disabled { color: $dim; }
 QMenu::separator { height: 1px; background: $border; margin: 4px 8px; }
 QToolBar { background: $panel2; border: none; border-bottom: 1px solid $border; padding: 3px 6px; spacing: 2px; }
 QToolBar::separator { width: 1px; background: $border; margin: 4px 6px; }
-QToolButton { background: transparent; border: none; border-radius: 4px; padding: 4px; }
+QToolButton { background: transparent; border: none; border-radius: 6px; padding: 5px; }
 QToolButton:hover { background: $active; }
 QToolButton:pressed { background: $accent; }
 QToolButton:disabled { background: transparent; }
@@ -76,9 +77,9 @@ QTreeView::item, QTreeWidget::item, QListWidget::item { padding: 3px 4px; border
 QTreeView::item:hover, QTreeWidget::item:hover, QListWidget::item:hover { background: $hover; }
 QTreeView::item:selected, QTreeWidget::item:selected, QListWidget::item:selected { background: $selection; color: $bright; }
 QHeaderView::section { background: $panel2; border: none; padding: 4px; }
-QLineEdit { background: $panel3; border: 1px solid $border; border-radius: 4px; padding: 5px 8px; selection-background-color: $selection; }
+QLineEdit { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 5px 8px; selection-background-color: $selection; }
 QLineEdit:focus { border-color: $focus; }
-QPushButton { background: $accent; color: $bright; border: none; border-radius: 4px; padding: 6px 14px; }
+QPushButton { background: $accent; color: $bright; border: none; border-radius: 6px; padding: 6px 16px; }
 QPushButton:hover { background: $accenthi; }
 QPushButton:pressed { background: $focus; }
 QPushButton:disabled { background: $panel3; color: $dim; }
@@ -99,7 +100,7 @@ QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 QToolTip { background: $panel2; color: $text; border: 1px solid $border; padding: 4px 6px; }
 QFormLayout QLabel { padding: 1px; }
 QMessageBox, QInputDialog { background: $panel2; }
-QSpinBox, QDoubleSpinBox { background: $panel3; border: 1px solid $border; border-radius: 4px; padding: 3px 6px; }
+QSpinBox, QDoubleSpinBox { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 3px 6px; }
 QSpinBox:focus, QDoubleSpinBox:focus { border-color: $focus; }
 QSlider::groove:horizontal { height: 4px; background: $panel3; border-radius: 2px; }
 QSlider::handle:horizontal { width: 14px; background: $focus; margin: -6px 0; border-radius: 7px; }
@@ -325,6 +326,39 @@ def _draw_search(qt, p, c):
     p.drawLine(qt.QtCore.QPointF(18.5, 18.5), qt.QtCore.QPointF(25, 25))
 
 
+def _draw_image(qt, p, c):
+    p.setPen(_pen(qt, c))
+    p.drawRoundedRect(qt.QtCore.QRectF(6, 8, 20, 16), 2, 2)
+    p.drawEllipse(qt.QtCore.QRectF(10, 11, 4, 4))
+    p.drawPolyline([qt.QtCore.QPointF(8, 21), qt.QtCore.QPointF(14, 15), qt.QtCore.QPointF(18, 19), qt.QtCore.QPointF(22, 14), qt.QtCore.QPointF(25, 17)])
+
+
+def _panel_shape(qt, p, c, side):
+    p.setPen(_pen(qt, c, 1.8))
+    p.setBrush(qt.QtCore.Qt.BrushStyle.NoBrush)
+    p.drawRoundedRect(qt.QtCore.QRectF(6, 8, 20, 16), 2, 2)
+    p.setPen(qt.QtCore.Qt.PenStyle.NoPen)
+    p.setBrush(qt.QtGui.QColor(c))
+    if side == "left":
+        p.drawRect(qt.QtCore.QRectF(7.5, 9.5, 5.5, 13))
+    elif side == "right":
+        p.drawRect(qt.QtCore.QRectF(19, 9.5, 5.5, 13))
+    else:
+        p.drawRect(qt.QtCore.QRectF(7.5, 17, 17, 5.5))
+
+
+def _draw_panel_left(qt, p, c):
+    _panel_shape(qt, p, c, "left")
+
+
+def _draw_panel_bottom(qt, p, c):
+    _panel_shape(qt, p, c, "bottom")
+
+
+def _draw_panel_right(qt, p, c):
+    _panel_shape(qt, p, c, "right")
+
+
 def _draw_location(qt, p, c):
     p.setPen(_pen(qt, c))
     p.drawEllipse(qt.QtCore.QRectF(10, 6, 12, 12))
@@ -378,6 +412,10 @@ _ICONS = {
     "window": (_draw_window, "info"),
     "terminal": (_draw_terminal, "text"),
     "search": (_draw_search, "text"),
+    "image": (_draw_image, "warn"),
+    "panel_left": (_draw_panel_left, "text"),
+    "panel_bottom": (_draw_panel_bottom, "text"),
+    "panel_right": (_draw_panel_right, "text"),
     "build": (_draw_build, "warn"),
     "clear": (_draw_clear, "text"),
     "book": (_draw_book, "text"),

@@ -85,12 +85,9 @@ def build_main_window_class(qt):
                 dock.setWidget(widget)
                 self.addDockWidget(area, dock)
                 self._docks[key] = dock
-            self.splitDockWidget(self._docks["console"], self._docks["spy"], QtCore.Qt.Orientation.Horizontal)
-            self.tabifyDockWidget(self._docks["console"], self._docks["terminal"])
-            self.tabifyDockWidget(self._docks["spy"], self._docks["winspy"])
+            for key in ("terminal", "spy", "winspy"):
+                self.tabifyDockWidget(self._docks["console"], self._docks[key])
             self._docks["console"].raise_()
-            self._docks["spy"].raise_()
-            self.resizeDocks([self._docks["console"], self._docks["spy"]], [700, 380], QtCore.Qt.Orientation.Horizontal)
             self._timer = QtCore.QTimer(self)
             self._timer.setInterval(50)
             self._timer.timeout.connect(self._drain)
@@ -129,24 +126,24 @@ def build_main_window_class(qt):
                 ("save_as", "Save &As...", "Ctrl+Shift+S", None, self._save_file_as, file_menu, False),
                 ("close_tab", "&Close Tab", "Ctrl+W", None, self._close_current_tab, file_menu, False),
                 ("settings", "Se&ttings...", "Ctrl+,", None, self._show_settings, file_menu, False),
-                ("run", "&Run Script", "F5", "run", self._run, run_menu, True),
-                ("pause", "&Pause", "F6", "pause", self._toggle_pause, run_menu, True),
-                ("stop", "S&top", "Shift+F5", "stop", self._stop, run_menu, True),
-                ("capture", "&Capture Image (Instant)...", "Ctrl+Shift+C", "camera", self._capture_image, tools_menu, True),
-                ("capture_delayed", "Capture Image (&Delayed)...", "Ctrl+Shift+D", "timer", self._delayed_capture, tools_menu, True),
+                ("run", "&Run Script", "Ctrl+^", "run", self._run, run_menu, True),
+                ("pause", "&Pause", "Ctrl+4", "pause", self._toggle_pause, run_menu, True),
+                ("stop", "S&top", "Ctrl+5", "stop", self._stop, run_menu, True),
+                ("capture", "&Capture Image (Instant)...", "Ctrl+1", "camera", self._capture_image, tools_menu, True),
+                ("capture_delayed", "Capture Image (&Delayed)...", "Ctrl+2", "timer", self._delayed_capture, tools_menu, True),
                 ("ocr", "&Read Screen Text (OCR)...", "Ctrl+Shift+R", "ocr", self._read_screen_text, tools_menu, True),
-                ("region", "Capture Re&gion From Screen...", "Ctrl+Shift+G", "region", self._insert_region, tools_menu, True),
+                ("region", "Capture Re&gion From Screen...", "Ctrl+Shift+D", "region", self._insert_region, tools_menu, True),
                 ("location", "Capture &Location From Screen...", "Ctrl+Shift+L", "location", self._capture_location, tools_menu, True),
-                ("offset", "Draw Target O&ffset...", "Ctrl+Shift+T", "offset", self._draw_offset_tool, tools_menu, True),
+                ("offset", "Draw Target O&ffset...", "Ctrl+Shift+O", "offset", self._draw_offset_tool, tools_menu, True),
                 ("spy_show", "Show &Element Spy", "Ctrl+Shift+E", "spy", self._show_spy, tools_menu, True),
                 ("winspy_show", "Show &Window Spy", "Ctrl+Shift+W", "window", self._show_winspy, tools_menu, True),
                 ("terminal_show", "Ter&minal", "Alt+F12", "terminal", self._show_terminal, tools_menu, True),
                 ("find_files", "Find in F&iles...", "Ctrl+Shift+F", "search", lambda: self._find_in_files(False), tools_menu, True),
-                ("replace_files", "Replace in Files...", "Ctrl+Shift+R", None, lambda: self._find_in_files(True), tools_menu, False),
+                ("replace_files", "Replace in Files...", "Ctrl+Shift+H", None, lambda: self._find_in_files(True), tools_menu, False),
                 ("goto_file", "Go to File...", "Ctrl+Shift+N", None, self._goto_file, tools_menu, False),
                 ("build", "&Build Standalone EXE", None, "build", self._build_exe, tools_menu, True),
                 ("guide_en", "User &Guide (English)", "F1", "book", lambda: self._show_doc("TUTORIAL.md", "User Guide"), help_menu, True),
-                ("guide_tr", "Kullanim &Kilavuzu (Turkce)", None, None, lambda: self._show_doc("KILAVUZ.md", "Kullanim Kilavuzu"), help_menu, False),
+                ("guide_tr", "Kullanim &Kilavuzu (Turkce)", "F2", None, lambda: self._show_doc("KILAVUZ.md", "Kullanim Kilavuzu"), help_menu, False),
                 ("about", "&About RPA Studio", None, None, self._about, help_menu, False),
             )
             groups = {"run": bar, "capture": bar, "guide_en": bar}
@@ -185,6 +182,23 @@ def build_main_window_class(qt):
             self._delay.setToolTip("Delay used only by Capture Image (Delayed): time to switch to the target before the screen freezes")
             self._delay.setFixedWidth(64)
             bar.insertWidget(self._actions["ocr"], self._delay)
+            spacer = QtWidgets.QWidget(self)
+            spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
+            bar.addWidget(spacer)
+            self._panel_buttons = {}
+            for icon, tip, keys in (
+                ("panel_left", "Toggle Explorer", ("files",)),
+                ("panel_bottom", "Toggle bottom panels", ("console", "terminal", "spy", "winspy")),
+                ("panel_right", "Toggle Commands", ("reference",)),
+            ):
+                button = QtWidgets.QToolButton(self)
+                button.setIcon(make_icon(qt, icon))
+                button.setToolTip(tip)
+                button.setCheckable(True)
+                button.setChecked(True)
+                button.toggled.connect(lambda visible, k=keys: self._toggle_panels(k, visible))
+                bar.addWidget(button)
+                self._panel_buttons[icon] = button
             for key in ("files", "spy", "winspy", "terminal", "reference", "console"):
                 view_menu.addAction(self._docks[key].toggleViewAction())
             for key, action in self._actions.items():
@@ -237,7 +251,7 @@ def build_main_window_class(qt):
                 if geometry:
                     self.restoreGeometry(geometry)
                 if state:
-                    self.restoreState(state, 2)
+                    self.restoreState(state, 3)
             except Exception:
                 pass
 
@@ -409,6 +423,10 @@ def build_main_window_class(qt):
             self._docks["spy"].show()
             self._docks["spy"].raise_()
 
+        def _toggle_panels(self, keys, visible):
+            for key in keys:
+                self._docks[key].setVisible(visible)
+
         def _show_winspy(self):
             self._docks["winspy"].show()
             self._docks["winspy"].raise_()
@@ -554,9 +572,10 @@ def build_main_window_class(qt):
             buttons = QtWidgets.QHBoxLayout()
             find_button = QtWidgets.QPushButton("Find", dialog)
             buttons.addWidget(find_button)
-            apply_button = QtWidgets.QPushButton("Replace All", dialog)
-            apply_button.setEnabled(False)
+            apply_button = None
             if replace:
+                apply_button = QtWidgets.QPushButton("Replace All", dialog)
+                apply_button.setEnabled(False)
                 buttons.addWidget(apply_button)
             buttons.addStretch(1)
             layout.addLayout(buttons)
@@ -582,10 +601,12 @@ def build_main_window_class(qt):
                             count += 1
                             if count >= 500:
                                 status.setText("Stopped at 500 matches.")
-                                apply_button.setEnabled(replace and count > 0)
+                                if apply_button is not None:
+                                    apply_button.setEnabled(count > 0)
                                 return
                 status.setText("{} match(es).".format(count))
-                apply_button.setEnabled(replace and count > 0)
+                if apply_button is not None:
+                    apply_button.setEnabled(count > 0)
 
             def run_replace():
                 needle = needle_edit.text()
@@ -617,7 +638,8 @@ def build_main_window_class(qt):
 
             find_button.clicked.connect(run_find)
             needle_edit.returnPressed.connect(run_find)
-            apply_button.clicked.connect(run_replace)
+            if apply_button is not None:
+                apply_button.clicked.connect(run_replace)
             dialog.resize(760, 480)
             dialog.show()
             self._help_windows.append(dialog)
@@ -741,8 +763,8 @@ def build_main_window_class(qt):
             self.show()
             self.activateWindow()
 
-        def _show_highlight(self, rects):
-            overlay = HighlightOverlay(rects)
+        def _show_highlight(self, rects, seconds=1.8):
+            overlay = HighlightOverlay(rects, seconds=seconds)
             self._highlight = overlay
             overlay.show()
 
@@ -1089,6 +1111,25 @@ def build_main_window_class(qt):
             row.addWidget(slider, 1)
             row.addWidget(value_label)
             layout.addLayout(row)
+            timing = QtWidgets.QHBoxLayout()
+            timing.addWidget(QtWidgets.QLabel("Search:", dialog))
+            search_spin = QtWidgets.QDoubleSpinBox(dialog)
+            search_spin.setRange(0.0, 60.0)
+            search_spin.setDecimals(1)
+            search_spin.setSingleStep(1.0)
+            search_spin.setSuffix(" s")
+            search_spin.setValue(8.0)
+            timing.addWidget(search_spin)
+            timing.addWidget(QtWidgets.QLabel("Highlight:", dialog))
+            highlight_spin = QtWidgets.QDoubleSpinBox(dialog)
+            highlight_spin.setRange(0.2, 30.0)
+            highlight_spin.setDecimals(1)
+            highlight_spin.setSingleStep(0.5)
+            highlight_spin.setSuffix(" s")
+            highlight_spin.setValue(2.0)
+            timing.addWidget(highlight_spin)
+            timing.addStretch(1)
+            layout.addLayout(timing)
             result = QtWidgets.QLabel("Press Find on Screen to test at the current similarity.", dialog)
             result.setWordWrap(True)
             layout.addWidget(result)
@@ -1099,9 +1140,9 @@ def build_main_window_class(qt):
             buttons.addWidget(insert_button)
             layout.addLayout(buttons)
 
-            def job(similarity):
+            def job(similarity, seconds):
                 from ..compat import sikuli
-                return sikuli.exists(sikuli.Pattern(path).similar(similarity), 0)
+                return sikuli.exists(sikuli.Pattern(path).similar(similarity), seconds)
 
             def find_ok(match):
                 dialog.show()
@@ -1112,7 +1153,7 @@ def build_main_window_class(qt):
                     return
                 target = match.getTarget()
                 result.setText("Found at ({}, {}) with score {:.2f}. A red box marks it on screen.".format(target.x, target.y, match.getScore()))
-                self._show_highlight([QtCore.QRect(match.x, match.y, match.w, match.h)])
+                self._show_highlight([QtCore.QRect(match.x, match.y, match.w, match.h)], highlight_spin.value())
 
             def find_err(exc):
                 dialog.show()
@@ -1123,9 +1164,10 @@ def build_main_window_class(qt):
             def run_find():
                 find_button.setEnabled(False)
                 similarity = slider.value() / 100.0
+                seconds = search_spin.value()
                 dialog.hide()
                 self.hide()
-                QtCore.QTimer.singleShot(180, lambda: watch(qt, spawn(lambda: job(similarity)), find_ok, find_err))
+                QtCore.QTimer.singleShot(180, lambda: watch(qt, spawn(lambda: job(similarity, seconds)), find_ok, find_err))
 
             def insert_pattern():
                 editor = self.current_editor()
@@ -1148,7 +1190,7 @@ def build_main_window_class(qt):
                     event.ignore()
                     return
             self._settings.setValue("geometry", self.saveGeometry())
-            self._settings.setValue("state", self.saveState(2))
+            self._settings.setValue("state", self.saveState(3))
             self._spy.shutdown()
             self._terminal.shutdown()
             if self._build_process is not None:
@@ -1163,6 +1205,8 @@ def build_main_window_class(qt):
 
 
 def _selftest_lines():
+    import warnings
+    warnings.filterwarnings("ignore", message="Revert to STA COM threading mode")
     from ..core.os_facade.base import OSFacadeFactory, Rect
     from ..core.inspector.base import InspectorFactory
     from ..packaging.runtime_paths import configured_ocr, docs_path, examples_dir, tessdata_dir, tesseract_cmd

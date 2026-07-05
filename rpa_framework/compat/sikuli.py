@@ -579,6 +579,9 @@ class Region:
         return self.wait(target)
 
     def wait(self, target, timeout=None, autoScroll=False):
+        if isinstance(target, (int, float)) and not isinstance(target, bool):
+            sleep(target)
+            return None
         pattern = _as_pattern(target)
         found = self._poll(pattern, Settings.AutoWaitTimeout if timeout is None else timeout, True)
         if found is None and autoScroll:
@@ -1088,10 +1091,17 @@ class Element:
 
 def _window_node(inspector, window):
     needle = str(window).lower()
+    handle = _app_window(window)
+    target_pid = handle.pid if handle is not None else None
+    fallback = None
     for child in inspector.children(inspector.root()):
-        if child is not None and needle in (child.name or "").lower():
+        if child is None:
+            continue
+        if needle in (child.name or "").lower():
             return child
-    return None
+        if fallback is None and target_pid and child.process_id == target_pid:
+            fallback = child
+    return fallback
 
 
 def _in_region(node, region):
