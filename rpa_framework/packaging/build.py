@@ -11,47 +11,64 @@ def detect_qt():
     for module, plugin in nuitka_flags.QT_BINDINGS:
         if importlib.util.find_spec(module) is not None:
             return module, plugin
-    raise SystemExit("install PyQt6 or PySide6 before building")
+    raise SystemExit("install PyQt6 or PySide6 before building the GUI (or use --headless)")
 
 
-def build_command(onefile=True, console=False):
+def _data_flags(root):
+    flags = []
+    for source, target in nuitka_flags.VENDOR_DATA:
+        path = os.path.join(root, "vendor", source)
+        if os.path.isdir(path):
+            flags.append("--include-raw-dir={}={}".format(path, target))
+    for source, target in nuitka_flags.VENDOR_FILES:
+        path = os.path.join(root, "vendor", source)
+        if os.path.isfile(path):
+            flags.append("--include-data-files={}={}".format(path, target))
+    for name in nuitka_flags.DOC_FILES:
+        path = os.path.join(root, "rpa_framework", name)
+        if os.path.isfile(path):
+            flags.append("--include-data-files={}={}".format(path, name))
+    samples = os.path.join(root, "rpa_framework", nuitka_flags.EXAMPLES_DIR)
+    if os.path.isdir(samples):
+        flags.append("--include-raw-dir={}={}".format(samples, nuitka_flags.EXAMPLES_DIR))
+    return flags
+
+
+def build_command(onefile=True, console=False, headless=False):
     root = bundle_root()
-    module, plugin = detect_qt()
     cmd = [sys.executable, "-m", "nuitka"]
     cmd.extend(nuitka_flags.BASE_FLAGS)
     if onefile:
         cmd.append(nuitka_flags.ONEFILE_FLAG)
-    cmd.append("--enable-plugin=" + plugin)
-    for package in nuitka_flags.INCLUDE_PACKAGES:
-        cmd.append("--include-package=" + package)
+        if os.name != "nt":
+            cmd.append("--onefile-tempdir-spec=" + nuitka_flags.ONEFILE_TEMP_SPEC)
+    if headless:
+        cmd.append("--include-package=rpa_framework")
+        for excluded in ("rpa_framework.ide", "PyQt6", "PySide6"):
+            cmd.append("--nofollow-import-to=" + excluded)
+    else:
+        module, plugin = detect_qt()
+        cmd.append("--enable-plugin=" + plugin)
+        for package in nuitka_flags.INCLUDE_PACKAGES:
+            cmd.append("--include-package=" + package)
+        for name in nuitka_flags.QT_MODULES:
+            cmd.append("--include-module={}.{}".format(module, name))
     for package in nuitka_flags.OPTIONAL_PACKAGES:
         if importlib.util.find_spec(package) is not None:
             cmd.append("--include-package=" + package)
-    for name in nuitka_flags.QT_MODULES:
-        cmd.append("--include-module={}.{}".format(module, name))
-    for source, target in nuitka_flags.VENDOR_DATA:
-        path = os.path.join(root, "vendor", source)
-        if os.path.isdir(path):
-            cmd.append("--include-raw-dir={}={}".format(path, target))
-    for source, target in nuitka_flags.VENDOR_FILES:
-        path = os.path.join(root, "vendor", source)
-        if os.path.isfile(path):
-            cmd.append("--include-data-files={}={}".format(path, target))
-    for name in nuitka_flags.DOC_FILES:
-        path = os.path.join(root, "rpa_framework", name)
-        if os.path.isfile(path):
-            cmd.append("--include-data-files={}={}".format(path, name))
-    samples = os.path.join(root, "rpa_framework", nuitka_flags.EXAMPLES_DIR)
-    if os.path.isdir(samples):
-        cmd.append("--include-raw-dir={}={}".format(samples, nuitka_flags.EXAMPLES_DIR))
-    if os.name == "nt" and not console:
+    cmd.extend(_data_flags(root))
+    if os.name == "nt" and not console and not headless:
         cmd.append(nuitka_flags.WINDOWS_NO_CONSOLE)
     icon = os.path.join(root, *nuitka_flags.APP_ICON)
-    if os.name == "nt" and os.path.isfile(icon):
+    if os.name == "nt" and os.path.isfile(icon) and not headless:
         cmd.append("--windows-icon-from-ico=" + icon)
     cmd.append("--output-dir=" + os.path.join(root, nuitka_flags.OUTPUT_DIR))
-    cmd.append("--output-filename=" + nuitka_flags.output_filename())
-    cmd.append(os.path.join(root, "rpa_framework", "ide", "app.py"))
+    if headless:
+        cmd.append("--output-filename=" + nuitka_flags.runner_filename())
+        cmd.append(os.path.join(root, "rpa_framework", "runner_app.py"))
+    else:
+        cmd.append("--output-filename=" + nuitka_flags.output_filename())
+        cmd.append(os.path.join(root, "rpa_framework", "ide", "app.py"))
     return cmd
 
 
@@ -92,12 +109,14 @@ def main(argv=None):
     args = sys.argv[1:] if argv is None else list(argv)
     onefile = "--no-onefile" not in args
     console = "--console" in args
+    headless = "--headless" in args
     if "--dry-run" in args:
-        print(subprocess.list2cmdline(build_command(onefile, console)))
+        print(subprocess.list2cmdline(build_command(onefile, console, headless)))
         return 0
-    pregenerate_com_bindings()
-    build_app_icon()
-    cmd = build_command(onefile, console)
+    if not headless:
+        pregenerate_com_bindings()
+        build_app_icon()
+    cmd = build_command(onefile, console, headless)
     print(subprocess.list2cmdline(cmd))
     return subprocess.call(cmd, cwd=bundle_root())
 

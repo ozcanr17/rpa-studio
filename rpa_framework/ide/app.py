@@ -126,7 +126,7 @@ def build_main_window_class(qt):
                 ("save_as", "Save &As...", "Ctrl+Shift+S", None, self._save_file_as, file_menu, False),
                 ("close_tab", "&Close Tab", "Ctrl+W", None, self._close_current_tab, file_menu, False),
                 ("settings", "Se&ttings...", "Ctrl+,", None, self._show_settings, file_menu, False),
-                ("run", "&Run Script", "Ctrl+^", "run", self._run, run_menu, True),
+                ("run", "&Run Script", "Ctrl+3", "run", self._run, run_menu, True),
                 ("pause", "&Pause", "Ctrl+4", "pause", self._toggle_pause, run_menu, True),
                 ("stop", "S&top", "Ctrl+5", "stop", self._stop, run_menu, True),
                 ("capture", "&Capture Image (Instant)...", "Ctrl+1", "camera", self._capture_image, tools_menu, True),
