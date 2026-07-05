@@ -113,7 +113,7 @@ def build_main_window_class(qt):
             bar = self.addToolBar("Main")
             bar.setObjectName("main_toolbar")
             bar.setMovable(False)
-            bar.setIconSize(QtCore.QSize(22, 22))
+            bar.setIconSize(QtCore.QSize(18, 18))
             file_menu = self.menuBar().addMenu("&File")
             run_menu = self.menuBar().addMenu("&Run")
             tools_menu = self.menuBar().addMenu("&Tools")
@@ -571,6 +571,7 @@ def build_main_window_class(qt):
             layout.addWidget(status)
             buttons = QtWidgets.QHBoxLayout()
             find_button = QtWidgets.QPushButton("Find", dialog)
+            find_button.setProperty("primary", True)
             buttons.addWidget(find_button)
             apply_button = None
             if replace:
@@ -1135,6 +1136,7 @@ def build_main_window_class(qt):
             layout.addWidget(result)
             buttons = QtWidgets.QHBoxLayout()
             find_button = QtWidgets.QPushButton("Find on Screen", dialog)
+            find_button.setProperty("primary", True)
             insert_button = QtWidgets.QPushButton("Insert Pattern", dialog)
             buttons.addWidget(find_button)
             buttons.addWidget(insert_button)

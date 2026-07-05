@@ -566,6 +566,41 @@ enterprise vision/targeting wave (8 upgrades).**
 - test_sikuli 32 (numeric wait added), test_ui_v2 (27 icons, panel toggles),
   test_engine all green; exe rebuilt + selftest; committed and pushed.
 
+**Session 11 (2026-07-05): Element Spy right-click trigger + TasteSkill
+redesign.**
+- Element Spy hotkey changed from Space to MOUSE RIGHT-CLICK
+  (panels.right_pressed, VK_RBUTTON 0x02; all hint strings updated).
+- TasteSkill v2 installed per user instruction: Node.js LTS via winget, then
+  `npx skills add https://github.com/Leonxlnx/taste-skill --skill
+  "design-taste-frontend"` -> `.agents/skills/design-taste-frontend/SKILL.md`
+  (1206 lines, read fully). Skill is web-centric; adapted to Qt per the
+  user's brief. Design read: professional desktop RPA IDE, dark-only,
+  Linear/VS Code-clean, dials VARIANCE 3 / MOTION 2 / DENSITY 7.
+- Design system implemented in theme.py:
+  - New neutral cool-gray ramp (bg #15161b, panel #191a20, panel2 #1e1f27,
+    panel3 #23252e, border #2b2d38, divider #21232c) + ONE locked indigo
+    accent family (#4f46e5 / #5b52ee / #818cf8), semantic ok/warn/error kept.
+  - MONOKAI surface unified with the chrome (#191a20) - no more olive
+    editor island; highlighter token colors unchanged.
+  - QSS rewritten: 12px chrome type, hairline dividers, 6px radius lock,
+    8px menus, styled QComboBox/QTableView/QCheckBox (drawn checkmark +
+    combo arrow added to the dynamic png rules), thin 10px scrollbars,
+    accent slider sub-page, dock titles 10px uppercase faint.
+  - BUTTON HIERARCHY: QPushButton default is now NEUTRAL (panel3 + border);
+    accent requires setProperty("primary", True). Primary set on: Spy
+    Start-watching + Insert, Asset Tester Find on Screen, Find-in-Files
+    Find. Everything else (scrape, refresh, dialogs) is secondary. The
+    "1. / 2." step-number prefixes were removed (TasteSkill Tell).
+  - ICONS: Lucide outline set (33 svgs downloaded to vendor/icons/lucide/,
+    bundled via existing icons raw dir). make_icon now loads the mapped
+    Lucide svg, tints currentColor to the palette, caches a temp svg, and
+    falls back to the old drawn glyphs if files are missing. All chrome
+    icons are a single dim gray; only run/pause/stop (semantic) and the
+    image file badge (orange) keep color. Toolbar icon size 18px.
+- test_ui_v2 updated: right_pressed import, MONOKAI expectations
+  (#191a20/#f2777a). All suites green; constraint checker green (skill
+  files live outside rpa_framework so ASCII rules unaffected).
+
 **Immediate next action:** none required - the remaining backlog is Section 5
 (Role A known-gaps work and Role B polish, e.g. welcome tab, multi-monitor
 capture coordinates).

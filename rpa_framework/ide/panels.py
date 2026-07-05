@@ -25,7 +25,7 @@ _TRANSLIT = {
 }
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp")
-VK_SPACE = 0x20
+VK_RBUTTON = 0x02
 
 
 def slugify(text, fallback="item", limit=3):
@@ -76,12 +76,12 @@ def sikuli_main_script(folder):
     return os.path.join(folder, scripts[0]) if scripts else None
 
 
-def space_pressed():
+def right_pressed():
     if os.name != "nt":
         return False
     try:
         import win32api
-        return bool(win32api.GetAsyncKeyState(VK_SPACE) & 0x8000)
+        return bool(win32api.GetAsyncKeyState(VK_RBUTTON) & 0x8000)
     except Exception:
         return False
 
@@ -494,12 +494,13 @@ def build_panels(qt):
             right_column.setSpacing(4)
             columns.addLayout(layout, 1)
             columns.addLayout(right_column, 1)
-            steps = QtWidgets.QLabel("Start watching, hover any control in any app, then press SPACE (or Insert) to drop it into the script as a variable.", self)
+            steps = QtWidgets.QLabel("Start watching, hover any control in any app, then RIGHT-CLICK it (or press Insert) to drop it into the script as a variable.", self)
             steps.setWordWrap(True)
             steps.setStyleSheet("color: {};".format(COLORS["dim"]))
             layout.addWidget(steps)
-            self._toggle = QtWidgets.QPushButton("1. Start watching", self)
+            self._toggle = QtWidgets.QPushButton("Start watching", self)
             self._toggle.setCheckable(True)
+            self._toggle.setProperty("primary", True)
             self._toggle.toggled.connect(self._toggled)
             layout.addWidget(self._toggle)
             self._raw = QtWidgets.QCheckBox("Raw tree deep scan (Electron / web apps)", self)
@@ -524,7 +525,8 @@ def build_panels(qt):
             self._action.currentIndexChanged.connect(self._refresh_preview)
             action_row.addWidget(self._action, 1)
             layout.addLayout(action_row)
-            self._insert = QtWidgets.QPushButton("2. Insert element + action  (or press SPACE)", self)
+            self._insert = QtWidgets.QPushButton("Insert element + action  (or right-click)", self)
+            self._insert.setProperty("primary", True)
             self._insert.setEnabled(False)
             self._insert.clicked.connect(self._capture_element)
             layout.addWidget(self._insert)
@@ -558,7 +560,7 @@ def build_panels(qt):
                 self._daemon = None
                 if daemon is not None:
                     spawn(daemon.stop)
-                self._toggle.setText("1. Start watching")
+                self._toggle.setText("Start watching")
                 self._insert.setEnabled(False)
                 self._preview.setText("Start watching, then hover a control.")
 
@@ -574,7 +576,7 @@ def build_panels(qt):
             self._daemon = daemon
             daemon.start()
             self._timer.start()
-            self._toggle.setText("Watching - hover a control, press SPACE")
+            self._toggle.setText("Watching - hover a control, right-click")
             self._preview.setText("Watching. Hover any control in any app.")
 
         def _failed(self, exc):
@@ -583,7 +585,7 @@ def build_panels(qt):
             self._preview.setText("Inspector unavailable: {}".format(exc))
 
         def _drain(self):
-            hot = space_pressed()
+            hot = right_pressed()
             if hot and not self._hot_prev and self._element:
                 self._capture_element()
             self._hot_prev = hot

@@ -4,38 +4,40 @@ import tempfile
 from .qt_shim import load_qt
 
 COLORS = {
-    "bg": "#1e1e1e",
-    "panel": "#252526",
-    "panel2": "#2d2d30",
-    "panel3": "#333333",
-    "border": "#3f3f46",
-    "accent": "#5b5fe0",
-    "accenthi": "#6e72ea",
-    "focus": "#8286f0",
-    "text": "#d4d4d4",
+    "bg": "#15161b",
+    "panel": "#191a20",
+    "panel2": "#1e1f27",
+    "panel3": "#23252e",
+    "border": "#2b2d38",
+    "divider": "#21232c",
+    "accent": "#4f46e5",
+    "accenthi": "#5b52ee",
+    "focus": "#818cf8",
+    "text": "#e5e6ec",
     "bright": "#ffffff",
-    "dim": "#8a8a8a",
-    "selection": "#3b3d63",
-    "hover": "#2a2d2e",
-    "active": "#37373d",
-    "error": "#f48771",
-    "ok": "#4ec9b0",
-    "warn": "#dcdcaa",
-    "info": "#569cd6",
-    "line": "#232323",
-    "gutter": "#6e7681",
-    "gutterhi": "#c6c6c6",
+    "dim": "#9a9db0",
+    "faint": "#6a6d80",
+    "selection": "#2e2f57",
+    "hover": "#20222b",
+    "active": "#282a35",
+    "error": "#f2777a",
+    "ok": "#5ec9a3",
+    "warn": "#d9b26a",
+    "info": "#7aa2f7",
+    "line": "#1b1d24",
+    "gutter": "#565a70",
+    "gutterhi": "#c7c9d6",
 }
 
 MONOKAI = {
-    "bg": "#272822",
-    "text": "#f8f8f2",
-    "line": "#3e3d32",
-    "gutter": "#90908a",
-    "gutterhi": "#f8f8f2",
-    "selection": "#49483e",
-    "error": "#f92672",
-    "guide": "#3c3d35",
+    "bg": "#191a20",
+    "text": "#e8e9ef",
+    "line": "#20222b",
+    "gutter": "#565a70",
+    "gutterhi": "#c7c9d6",
+    "selection": "#2e2f57",
+    "error": "#f2777a",
+    "guide": "#262833",
 }
 
 LOGO_STOPS = ((0.0, "#22d3ee"), (0.5, "#3b82f6"), (1.0, "#8b5cf6"))
@@ -50,60 +52,78 @@ _LOGO_DOTS = ((10, 11), (13.6, 11), (13.6, 14.6), (10, 21.5), (14.2, 21.5), (22,
 
 _QSS = """
 QMainWindow, QDialog { background: $bg; }
-QWidget { color: $text; font-size: 13px; }
-QMenuBar { background: $panel2; border-bottom: 1px solid $border; padding: 2px; }
-QMenuBar::item { padding: 5px 10px; background: transparent; border-radius: 4px; }
-QMenuBar::item:selected { background: $active; }
-QMenu { background: $panel2; border: 1px solid $border; padding: 4px; }
-QMenu::item { padding: 5px 28px 5px 20px; border-radius: 4px; }
+QWidget { color: $text; font-size: 12px; }
+QMenuBar { background: $bg; border-bottom: 1px solid $divider; padding: 2px 4px; }
+QMenuBar::item { padding: 5px 10px; background: transparent; border-radius: 6px; color: $dim; }
+QMenuBar::item:selected { background: $active; color: $text; }
+QMenu { background: $panel2; border: 1px solid $border; border-radius: 8px; padding: 5px; }
+QMenu::item { padding: 6px 28px 6px 14px; border-radius: 5px; }
 QMenu::item:selected { background: $accent; color: $bright; }
-QMenu::item:disabled { color: $dim; }
-QMenu::separator { height: 1px; background: $border; margin: 4px 8px; }
-QToolBar { background: $panel2; border: none; border-bottom: 1px solid $border; padding: 3px 6px; spacing: 2px; }
-QToolBar::separator { width: 1px; background: $border; margin: 4px 6px; }
-QToolButton { background: transparent; border: none; border-radius: 6px; padding: 5px; }
-QToolButton:hover { background: $active; }
-QToolButton:pressed { background: $accent; }
+QMenu::item:disabled { color: $faint; }
+QMenu::separator { height: 1px; background: $border; margin: 5px 10px; }
+QToolBar { background: $bg; border: none; border-bottom: 1px solid $divider; padding: 4px 8px; spacing: 2px; }
+QToolBar::separator { width: 1px; background: $border; margin: 5px 6px; }
+QToolButton { background: transparent; border: none; border-radius: 6px; padding: 5px; color: $dim; }
+QToolButton:hover { background: $active; color: $text; }
+QToolButton:pressed { background: $panel3; }
+QToolButton:checked { background: $selection; }
 QToolButton:disabled { background: transparent; }
 QTabWidget::pane { border: none; background: $bg; }
 QTabBar { background: $panel; }
-QTabBar::tab { background: $panel; color: $dim; padding: 7px 14px; border: none; border-right: 1px solid $bg; min-width: 90px; }
-QTabBar::tab:selected { background: $bg; color: $bright; border-top: 1px solid $focus; }
-QTabBar::tab:hover:!selected { background: $hover; }
+QTabBar::tab { background: transparent; color: $dim; padding: 7px 14px; border: none; border-top: 2px solid transparent; min-width: 80px; }
+QTabBar::tab:selected { background: $bg; color: $bright; border-top: 2px solid $accent; }
+QTabBar::tab:hover:!selected { background: $hover; color: $text; }
 QDockWidget { color: $text; titlebar-close-icon: none; titlebar-normal-icon: none; }
-QDockWidget::title { background: $panel; padding: 6px 10px; border-bottom: 1px solid $border; text-transform: uppercase; }
+QDockWidget::title { background: $panel; padding: 6px 12px; border-bottom: 1px solid $divider; text-transform: uppercase; font-size: 10px; color: $faint; }
 QTreeView, QTreeWidget, QListWidget { background: $panel; border: none; outline: none; }
-QTreeView::item, QTreeWidget::item, QListWidget::item { padding: 3px 4px; border-radius: 3px; }
+QTreeView::item, QTreeWidget::item, QListWidget::item { padding: 4px 5px; border-radius: 5px; }
 QTreeView::item:hover, QTreeWidget::item:hover, QListWidget::item:hover { background: $hover; }
 QTreeView::item:selected, QTreeWidget::item:selected, QListWidget::item:selected { background: $selection; color: $bright; }
-QHeaderView::section { background: $panel2; border: none; padding: 4px; }
-QLineEdit { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 5px 8px; selection-background-color: $selection; }
-QLineEdit:focus { border-color: $focus; }
-QPushButton { background: $accent; color: $bright; border: none; border-radius: 6px; padding: 6px 16px; }
-QPushButton:hover { background: $accenthi; }
-QPushButton:pressed { background: $focus; }
-QPushButton:disabled { background: $panel3; color: $dim; }
-QPushButton:checked { background: $focus; }
+QTableWidget, QTableView { background: $panel; border: none; gridline-color: $divider; selection-background-color: $selection; selection-color: $bright; alternate-background-color: $panel2; }
+QHeaderView::section { background: $panel; border: none; border-bottom: 1px solid $border; padding: 6px 8px; color: $faint; font-size: 10px; text-transform: uppercase; }
+QLineEdit { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 6px 9px; selection-background-color: $selection; }
+QLineEdit:focus { border-color: $accent; }
+QLineEdit:disabled { color: $faint; }
+QPushButton { background: $panel3; color: $text; border: 1px solid $border; border-radius: 6px; padding: 6px 14px; }
+QPushButton:hover { background: $active; border-color: #3a3d4c; }
+QPushButton:pressed { background: $panel2; }
+QPushButton:disabled { background: $panel2; color: $faint; border-color: $divider; }
+QPushButton:checked { background: $selection; border-color: $accent; }
+QPushButton[primary="true"] { background: $accent; color: $bright; border: none; padding: 7px 15px; }
+QPushButton[primary="true"]:hover { background: $accenthi; }
+QPushButton[primary="true"]:pressed { background: #443dc4; }
+QPushButton[primary="true"]:disabled { background: $panel3; color: $faint; }
+QDialogButtonBox QPushButton { min-width: 76px; }
+QComboBox { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 5px 9px; }
+QComboBox:hover { border-color: #3a3d4c; }
+QComboBox:focus { border-color: $accent; }
+QComboBox::drop-down { border: none; width: 22px; }
+QComboBox QAbstractItemView { background: $panel2; border: 1px solid $border; border-radius: 6px; selection-background-color: $selection; outline: none; }
 QPlainTextEdit, QTextEdit, QTextBrowser { background: $bg; border: none; selection-background-color: $selection; }
-QStatusBar { background: $accent; color: $bright; }
+QStatusBar { background: $accent; color: $bright; font-size: 11px; }
 QStatusBar QLabel { color: $bright; padding: 2px 8px; }
 QStatusBar::item { border: none; }
-QSplitter::handle { background: $border; }
-QScrollBar:vertical { background: transparent; width: 12px; margin: 0; }
-QScrollBar::handle:vertical { background: #424242; border-radius: 5px; min-height: 24px; margin: 2px; }
-QScrollBar::handle:vertical:hover { background: #4f4f4f; }
-QScrollBar:horizontal { background: transparent; height: 12px; margin: 0; }
-QScrollBar::handle:horizontal { background: #424242; border-radius: 5px; min-width: 24px; margin: 2px; }
-QScrollBar::handle:horizontal:hover { background: #4f4f4f; }
+QSplitter::handle { background: $divider; }
+QScrollBar:vertical { background: transparent; width: 10px; margin: 0; }
+QScrollBar::handle:vertical { background: #2f3140; border-radius: 5px; min-height: 24px; margin: 2px; }
+QScrollBar::handle:vertical:hover { background: #3c3f52; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 0; }
+QScrollBar::handle:horizontal { background: #2f3140; border-radius: 5px; min-width: 24px; margin: 2px; }
+QScrollBar::handle:horizontal:hover { background: #3c3f52; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
 QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
-QToolTip { background: $panel2; color: $text; border: 1px solid $border; padding: 4px 6px; }
+QToolTip { background: $panel2; color: $text; border: 1px solid $border; border-radius: 6px; padding: 5px 8px; }
 QFormLayout QLabel { padding: 1px; }
 QMessageBox, QInputDialog { background: $panel2; }
-QSpinBox, QDoubleSpinBox { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 3px 6px; }
-QSpinBox:focus, QDoubleSpinBox:focus { border-color: $focus; }
+QSpinBox, QDoubleSpinBox { background: $panel3; border: 1px solid $border; border-radius: 6px; padding: 4px 6px; }
+QSpinBox:focus, QDoubleSpinBox:focus { border-color: $accent; }
+QCheckBox { spacing: 7px; }
+QCheckBox::indicator { width: 15px; height: 15px; border: 1px solid $border; border-radius: 4px; background: $panel3; }
+QCheckBox::indicator:hover { border-color: $focus; }
+QCheckBox::indicator:checked { background: $accent; border-color: $accent; }
 QSlider::groove:horizontal { height: 4px; background: $panel3; border-radius: 2px; }
-QSlider::handle:horizontal { width: 14px; background: $focus; margin: -6px 0; border-radius: 7px; }
+QSlider::sub-page:horizontal { background: $accent; border-radius: 2px; }
+QSlider::handle:horizontal { width: 14px; background: $bright; margin: -6px 0; border-radius: 7px; }
 """
 
 
@@ -111,6 +131,11 @@ def _draw_close(qt, p, c):
     p.setPen(_pen(qt, c, 1.9))
     p.drawLine(qt.QtCore.QPointF(5, 5), qt.QtCore.QPointF(11, 11))
     p.drawLine(qt.QtCore.QPointF(11, 5), qt.QtCore.QPointF(5, 11))
+
+
+def _draw_check(qt, p, c):
+    p.setPen(_pen(qt, c, 2.0))
+    p.drawPolyline([qt.QtCore.QPointF(3.5, 8.5), qt.QtCore.QPointF(6.5, 11.5), qt.QtCore.QPointF(12.5, 4.5)])
 
 
 def _draw_arrow_up(qt, p, c):
@@ -157,6 +182,7 @@ def _close_button_qss():
     hover = _png_icon(qt, _draw_close, COLORS["bright"], "close_hi")
     up = _png_icon(qt, _draw_arrow_up, COLORS["text"], "spin_up")
     down = _png_icon(qt, _draw_arrow_down, COLORS["text"], "spin_down")
+    check = _png_icon(qt, _draw_check, COLORS["bright"], "check_mark")
     rules = (
         "QTabBar::close-button { image: url('%s'); subcontrol-position: right; margin: 3px; padding: 1px; border-radius: 3px; }"
         "QTabBar::close-button:hover { image: url('%s'); background: %s; }"
@@ -165,8 +191,10 @@ def _close_button_qss():
         "QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover, QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover { background: %s; }"
         "QSpinBox::up-arrow, QDoubleSpinBox::up-arrow { image: url('%s'); width: 9px; height: 9px; }"
         "QSpinBox::down-arrow, QDoubleSpinBox::down-arrow { image: url('%s'); width: 9px; height: 9px; }"
+        "QCheckBox::indicator:checked { image: url('%s'); }"
+        "QComboBox::down-arrow { image: url('%s'); width: 9px; height: 9px; }"
     )
-    return rules % (normal, hover, COLORS["active"], COLORS["active"], up, down)
+    return rules % (normal, hover, COLORS["active"], COLORS["active"], up, down, check, down)
 
 
 def stylesheet():
@@ -395,33 +423,97 @@ _ICONS = {
     "run": (_draw_run, "ok"),
     "pause": (_draw_pause, "warn"),
     "stop": (_draw_stop, "error"),
-    "new": (_draw_new, "text"),
-    "open": (_draw_open, "text"),
-    "save": (_draw_save, "text"),
-    "camera": (_draw_camera, "info"),
-    "spy": (_draw_spy, "info"),
-    "ocr": (_draw_ocr, "info"),
-    "region": (_draw_region, "info"),
-    "offset": (_draw_offset, "warn"),
-    "location": (_draw_location, "info"),
-    "timer": (_draw_timer, "info"),
-    "folder": (_draw_folder, "text"),
-    "refresh": (_draw_refresh, "text"),
-    "collapse": (_draw_collapse, "text"),
-    "expand": (_draw_expand, "text"),
-    "window": (_draw_window, "info"),
-    "terminal": (_draw_terminal, "text"),
-    "search": (_draw_search, "text"),
+    "new": (_draw_new, "dim"),
+    "open": (_draw_open, "dim"),
+    "save": (_draw_save, "dim"),
+    "camera": (_draw_camera, "dim"),
+    "spy": (_draw_spy, "dim"),
+    "ocr": (_draw_ocr, "dim"),
+    "region": (_draw_region, "dim"),
+    "offset": (_draw_offset, "dim"),
+    "location": (_draw_location, "dim"),
+    "timer": (_draw_timer, "dim"),
+    "folder": (_draw_folder, "dim"),
+    "refresh": (_draw_refresh, "dim"),
+    "collapse": (_draw_collapse, "dim"),
+    "expand": (_draw_expand, "dim"),
+    "window": (_draw_window, "dim"),
+    "terminal": (_draw_terminal, "dim"),
+    "search": (_draw_search, "dim"),
     "image": (_draw_image, "warn"),
-    "panel_left": (_draw_panel_left, "text"),
-    "panel_bottom": (_draw_panel_bottom, "text"),
-    "panel_right": (_draw_panel_right, "text"),
-    "build": (_draw_build, "warn"),
-    "clear": (_draw_clear, "text"),
-    "book": (_draw_book, "text"),
+    "panel_left": (_draw_panel_left, "dim"),
+    "panel_bottom": (_draw_panel_bottom, "dim"),
+    "panel_right": (_draw_panel_right, "dim"),
+    "build": (_draw_build, "dim"),
+    "clear": (_draw_clear, "dim"),
+    "book": (_draw_book, "dim"),
 }
 
 _CACHE = {}
+
+_LUCIDE = {
+    "run": "play",
+    "pause": "pause",
+    "stop": "square",
+    "new": "file-plus",
+    "open": "folder-open",
+    "save": "save",
+    "camera": "scan",
+    "timer": "timer",
+    "ocr": "scan-text",
+    "region": "square-dashed",
+    "location": "crosshair",
+    "offset": "move",
+    "spy": "target",
+    "build": "package",
+    "clear": "eraser",
+    "book": "book-open",
+    "folder": "folder",
+    "refresh": "refresh-cw",
+    "collapse": "chevrons-down-up",
+    "expand": "chevrons-up-down",
+    "window": "app-window",
+    "terminal": "terminal",
+    "search": "search",
+    "image": "image",
+    "panel_left": "panel-left",
+    "panel_bottom": "panel-bottom",
+    "panel_right": "panel-right",
+}
+
+
+def _lucide_file(name):
+    try:
+        from ..packaging.runtime_paths import bundle_root, resource_path
+        bundled = resource_path("icons", "lucide", name + ".svg")
+        if os.path.isfile(bundled):
+            return bundled
+        vendored = os.path.join(bundle_root(), "vendor", "icons", "lucide", name + ".svg")
+        if os.path.isfile(vendored):
+            return vendored
+    except Exception:
+        pass
+    return None
+
+
+def _lucide_icon(qt, kind, color):
+    name = _LUCIDE.get(kind)
+    if name is None:
+        return None
+    source = _lucide_file(name)
+    if source is None:
+        return None
+    try:
+        with open(source, "r", encoding="utf-8", errors="replace") as handle:
+            text = handle.read()
+        text = text.replace("currentColor", color)
+        target = os.path.join(tempfile.gettempdir(), "rpastudio_lc_{}_{}.svg".format(name, color.lstrip("#")))
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        icon = qt.QtGui.QIcon(target)
+        return icon if not icon.isNull() else None
+    except Exception:
+        return None
 
 
 def _logo_gradient(qt):
@@ -511,13 +603,15 @@ def make_icon(qt, kind):
     if cached is not None:
         return cached
     draw, color_key = _ICONS[kind]
-    pm = qt.QtGui.QPixmap(32, 32)
-    pm.fill(qt.QtCore.Qt.GlobalColor.transparent)
-    painter = qt.QtGui.QPainter(pm)
-    painter.setRenderHint(qt.QtGui.QPainter.RenderHint.Antialiasing)
-    draw(qt, painter, COLORS[color_key])
-    painter.end()
-    icon = qt.QtGui.QIcon(pm)
+    icon = _lucide_icon(qt, kind, COLORS[color_key])
+    if icon is None:
+        pm = qt.QtGui.QPixmap(32, 32)
+        pm.fill(qt.QtCore.Qt.GlobalColor.transparent)
+        painter = qt.QtGui.QPainter(pm)
+        painter.setRenderHint(qt.QtGui.QPainter.RenderHint.Antialiasing)
+        draw(qt, painter, COLORS[color_key])
+        painter.end()
+        icon = qt.QtGui.QIcon(pm)
     _CACHE[kind] = icon
     return icon
 

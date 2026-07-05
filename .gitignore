@@ -7,3 +7,5 @@ rpa_studio_*.png
 rpastudio_selftest.txt
 selftest*.txt
 nuitka-crash-report.xml
+
+.agents/
