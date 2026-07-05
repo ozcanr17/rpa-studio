@@ -601,9 +601,71 @@ redesign.**
   (#191a20/#f2777a). All suites green; constraint checker green (skill
   files live outside rpa_framework so ASCII rules unaffected).
 
-**Immediate next action:** none required - the remaining backlog is Section 5
-(Role A known-gaps work and Role B polish, e.g. welcome tab, multi-monitor
-capture coordinates).
+**Session 12 (2026-07-05): Linux release follow-up, terminal rework, PR
+workflow, Windows release.**
+- The user copied the project to RHEL/CentOS 8, built a standalone GUI folder
+  there, and published GitHub release `linux-v1.0.0` (tag on b8534d9, asset
+  `rpa-studio-linux.tar.gz`). No new commits came from the Linux side; the
+  local Linux/library work (pyproject.toml, scripting.py, run.py,
+  runner_app.py, packaging/offline.py, requirements-linux/gui splits,
+  --headless build target, LINUX.md) was committed as the session 12
+  checkpoint (1a4bd22).
+- Terminal dock REWRITTEN (panels.TerminalPanel): the old persistent
+  interactive shell (cmd /Q /K, sh -i) piped through QProcess misbehaved
+  without a pty ("does not recognize commands"). Now every line runs as a
+  ONE-SHOT command (`cmd /d /s /c` via setNativeArguments on Windows,
+  `$SHELL -c` on Linux) with streamed merged output; `cd`/`cls`/`clear` are
+  built-ins tracked panel-side (`_workdir`), Up/Down recalls history
+  (eventFilter on the QLineEdit), a stop button kills the running command,
+  and a prompt label shows the current folder. start(workdir) only sets the
+  cwd on first use; open_external unchanged.
+- Find in Files stray-box bug fixed: `replace_edit` was created with the
+  dialog as parent even in find-only mode but never added to the layout, so
+  it painted as a floating rounded box over the form (user screenshot). It is
+  now created only when replace=True.
+- Shortcuts finalized to the user's scheme: capture Ctrl+1, delayed capture
+  Ctrl+2, run Ctrl+3, pause Ctrl+4, stop Ctrl+5 (these were already in HEAD),
+  region Ctrl+Shift+D, and NOW replace_files Ctrl+Shift+R with OCR moved to
+  Ctrl+Shift+T. A one-time keymap migration (QSettings `keymap_version` < 2
+  wipes all stored `key_<action>` values) makes the new defaults take effect
+  over bindings saved under the old scheme.
+- Pause UX: while paused the pause action is DISABLED and the run action
+  becomes enabled "&Resume Script"; pressing run resumes (_run delegates to
+  _toggle_pause when running+paused). _refresh_ui holds the state matrix.
+- Capture toolbar icon is a real camera now: vendor/icons/lucide/camera.svg
+  added (official Lucide markup) and theme._LUCIDE["camera"] remapped from
+  "scan" to "camera"; drawn-glyph fallback unchanged.
+- Professional build layout: scripts/build_windows.ps1 (uses .venv-build,
+  passes flags through, runs the compiled exe --selftest and fails on any
+  fail line) and scripts/build_linux.sh (GUI --no-onefile folder staged to
+  dist/rpa-studio-linux + run.sh + LINUX.md, tarred to
+  dist/rpa-studio-linux.tar.gz to mirror the Linux release; `headless` arg
+  builds dist/rpa-run.bin). BUILDING.md at workspace root documents the
+  artifact matrix, per-platform setup, library install (pip install . /
+  .[gui], offline wheelhouse), bundled-data rules, and the release checklist
+  (windows-vX.Y.Z / linux-vX.Y.Z tags, keep pyproject + __init__ versions in
+  sync).
+- Library packaging verified: `pip wheel .` produces
+  rpa_framework-1.0.0-py3-none-any.whl (59 files) containing compat/sikuli,
+  scripting, run, examples, and the rpa-run/rpa-studio entry points.
+  GOTCHA: pip wheel leaves build/ and rpa_framework.egg-info/ in the
+  workspace - both are now in .gitignore (an accidental commit of them was
+  amended away).
+- GIT WORKFLOW CHANGE: direct `git push origin main` is blocked by the
+  Claude Code permission classifier in this environment. Work is pushed on a
+  feature branch and merged via pull request instead - session 12 went out
+  as branch `session-12-ide-fixes`, PR #1
+  (https://github.com/ozcanr17/rpa-studio/pull/1).
+- Verified: constraint checker 48 py files / 0 problems; 33 offscreen GUI
+  checks (shortcut defaults, dialog widget counts, run/pause/stop state
+  matrix incl. resume-via-play, terminal echo/cd/history/exit/kill, camera
+  icon mapping); build_windows.ps1 -DryRun emits the known-good Nuitka
+  command. Windows exe rebuilt + selftest + published as GitHub release
+  windows-v1.0.0 with dist/RPAStudio.exe attached.
+
+**Immediate next action:** merge PR #1 on GitHub (session 12 changes). The
+remaining backlog is Section 5 (Role A known-gaps work and Role B polish,
+e.g. welcome tab, multi-monitor capture coordinates).
 
 Standing flags: **builds must use `.venv-build` (python.org 3.14), never
 `.venv`** (Store Python cannot link); run `--selftest` on the exe after every
