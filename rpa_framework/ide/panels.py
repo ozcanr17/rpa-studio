@@ -982,6 +982,10 @@ def build_panels(qt):
         def __init__(self, parent=None):
             super().__init__(parent)
             self._process = None
+            self._workdir = os.path.expanduser("~")
+            self._history = []
+            self._history_pos = 0
+            self._started = False
             layout = QtWidgets.QVBoxLayout(self)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
@@ -991,47 +995,90 @@ def build_panels(qt):
             font.setStyleHint(QtGui.QFont.StyleHint.Monospace)
             font.setPointSize(10)
             self._view.setFont(font)
+            self._prompt = QtWidgets.QLabel("", self)
+            self._prompt.setFont(font)
             self._input = QtWidgets.QLineEdit(self)
-            self._input.setPlaceholderText("Type a command and press Enter")
+            self._input.setFont(font)
+            self._input.setPlaceholderText("Type a command and press Enter (cd and clear built in, Up/Down for history)")
             self._input.returnPressed.connect(self._send)
-            row = QtWidgets.QHBoxLayout()
-            row.setContentsMargins(0, 0, 0, 0)
-            row.addWidget(self._input, 1)
+            self._input.installEventFilter(self)
+            self._stop = QtWidgets.QToolButton(self)
+            self._stop.setIcon(make_icon(qt, "stop"))
+            self._stop.setToolTip("Stop the running command")
+            self._stop.setEnabled(False)
+            self._stop.clicked.connect(self._kill)
             external = QtWidgets.QToolButton(self)
             external.setIcon(make_icon(qt, "open"))
-            external.setToolTip("Open the system terminal in the project folder")
+            external.setToolTip("Open the system terminal in the current folder")
             external.clicked.connect(lambda: self.open_external(self._workdir))
+            row = QtWidgets.QHBoxLayout()
+            row.setContentsMargins(6, 2, 2, 2)
+            row.setSpacing(4)
+            row.addWidget(self._prompt)
+            row.addWidget(self._input, 1)
+            row.addWidget(self._stop)
             row.addWidget(external)
             layout.addWidget(self._view, 1)
             layout.addLayout(row)
-            self._workdir = None
+            self._update_prompt()
 
         def start(self, workdir=None):
-            if workdir:
-                self._workdir = workdir
-            if self._process is not None:
-                return
-            proc = QtCore.QProcess(self)
-            proc.setProcessChannelMode(QtCore.QProcess.ProcessChannelMode.MergedChannels)
-            if workdir and os.path.isdir(workdir):
-                proc.setWorkingDirectory(workdir)
-            proc.readyReadStandardOutput.connect(self._drain)
-            if os.name == "nt":
-                shell = os.environ.get("COMSPEC", "cmd.exe")
-                args = ["/Q", "/K", "prompt $P$G"]
-            else:
-                shell = os.environ.get("SHELL", "/bin/sh")
-                args = ["-i"]
-            try:
-                proc.start(shell, args)
-                self._process = proc
-            except Exception:
-                self._process = None
+            if not self._started and workdir and os.path.isdir(workdir):
+                self._workdir = os.path.abspath(workdir)
+                self._update_prompt()
+            if not self._started:
+                self._started = True
+                shell = "cmd" if os.name == "nt" else "shell"
+                self._print("Each line runs as a {} command in the current folder.\n".format(shell), "info")
+                self._print("Built in: cd <folder>, clear. Up/Down recalls history.\n\n", "info")
 
         def showEvent(self, event):
             super().showEvent(event)
             self.start()
             self._input.setFocus()
+
+        def eventFilter(self, obj, event):
+            if obj is self._input and event.type() == QtCore.QEvent.Type.KeyPress:
+                key = event.key()
+                if key == QtCore.Qt.Key.Key_Up:
+                    self._recall(-1)
+                    return True
+                if key == QtCore.Qt.Key.Key_Down:
+                    self._recall(1)
+                    return True
+            return super().eventFilter(obj, event)
+
+        def _recall(self, step):
+            if not self._history:
+                return
+            self._history_pos = max(0, min(len(self._history), self._history_pos + step))
+            if self._history_pos == len(self._history):
+                self._input.clear()
+            else:
+                self._input.setText(self._history[self._history_pos])
+
+        def _update_prompt(self):
+            name = os.path.basename(self._workdir.rstrip("\\/")) or self._workdir
+            self._prompt.setText(name + ">")
+            self._prompt.setToolTip(self._workdir)
+
+        def _print(self, text, kind="stdout"):
+            if not text:
+                return
+            cursor = self._view.textCursor()
+            cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+            fmt = QtGui.QTextCharFormat()
+            fmt.setForeground(QtGui.QColor(CONSOLE_COLORS.get(kind, COLORS["text"])))
+            cursor.insertText(text, fmt)
+            self._view.setTextCursor(cursor)
+            self._view.ensureCursorVisible()
+            document = self._view.document()
+            extra = document.blockCount() - 4000
+            if extra > 0:
+                trim = QtGui.QTextCursor(document)
+                trim.movePosition(QtGui.QTextCursor.MoveOperation.Start)
+                trim.movePosition(QtGui.QTextCursor.MoveOperation.NextBlock, QtGui.QTextCursor.MoveMode.KeepAnchor, extra)
+                trim.removeSelectedText()
 
         def _decode(self, raw):
             for encoding in ("utf-8", "mbcs"):
@@ -1044,29 +1091,77 @@ def build_panels(qt):
         def _drain(self):
             if self._process is None:
                 return
-            text = self._decode(bytes(self._process.readAllStandardOutput()))
-            cursor = self._view.textCursor()
-            cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
-            cursor.insertText(text)
-            self._view.setTextCursor(cursor)
-            self._view.ensureCursorVisible()
-            document = self._view.document()
-            extra = document.blockCount() - 4000
-            if extra > 0:
-                trim = QtGui.QTextCursor(document)
-                trim.movePosition(QtGui.QTextCursor.MoveOperation.Start)
-                trim.movePosition(QtGui.QTextCursor.MoveOperation.NextBlock, QtGui.QTextCursor.MoveMode.KeepAnchor, extra)
-                trim.removeSelectedText()
+            self._print(self._decode(bytes(self._process.readAllStandardOutput())))
 
         def _send(self):
-            if self._process is None:
-                self.start()
-            command = self._input.text()
+            command = self._input.text().strip()
             self._input.clear()
+            if not command:
+                return
+            if self._process is not None:
+                self._print("[busy] a command is still running - press the stop button first\n", "tool")
+                return
+            if not self._history or self._history[-1] != command:
+                self._history.append(command)
+            self._history_pos = len(self._history)
+            self._print("{}> {}\n".format(self._workdir, command), "started")
+            lowered = command.lower()
+            if lowered in ("clear", "cls"):
+                self._view.clear()
+                return
+            if lowered == "cd" or lowered.startswith(("cd ", "cd..", "cd\\", "cd/")):
+                self._change_dir(command[2:].strip())
+                return
+            self._spawn(command)
+
+        def _change_dir(self, target):
+            if not target:
+                self._print(self._workdir + "\n")
+                return
+            target = os.path.expandvars(os.path.expanduser(target.strip('"')))
+            if not os.path.isabs(target):
+                target = os.path.join(self._workdir, target)
+            target = os.path.abspath(target)
+            if os.path.isdir(target):
+                self._workdir = target
+                self._update_prompt()
+            else:
+                self._print("cd: no such folder: {}\n".format(target), "stderr")
+
+        def _spawn(self, command):
+            proc = QtCore.QProcess(self)
+            proc.setProcessChannelMode(QtCore.QProcess.ProcessChannelMode.MergedChannels)
+            proc.setWorkingDirectory(self._workdir)
+            proc.readyReadStandardOutput.connect(self._drain)
+            proc.finished.connect(self._finished)
+            try:
+                if os.name == "nt":
+                    shell = os.environ.get("COMSPEC", "cmd.exe")
+                    try:
+                        proc.setProgram(shell)
+                        proc.setNativeArguments('/d /s /c "{}"'.format(command))
+                        proc.start()
+                    except Exception:
+                        proc.start(shell, ["/d", "/c", command])
+                else:
+                    proc.start(os.environ.get("SHELL", "/bin/sh"), ["-c", command])
+                self._process = proc
+                self._stop.setEnabled(True)
+            except Exception:
+                self._process = None
+                self._print("[error] could not start the command\n", "stderr")
+
+        def _finished(self, code, status):
+            self._drain()
+            if code:
+                self._print("[exit {}]\n".format(code), "tool")
+            self._process = None
+            self._stop.setEnabled(False)
+
+        def _kill(self):
             if self._process is not None:
                 try:
-                    ending = "\r\n" if os.name == "nt" else "\n"
-                    self._process.write((command + ending).encode("utf-8"))
+                    self._process.kill()
                 except Exception:
                     pass
 

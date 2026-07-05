@@ -1,6 +1,8 @@
 .venv/
 .venv-build/
 dist/
+build/
+*.egg-info/
 __pycache__/
 *.pyc
 rpa_studio_*.png

@@ -131,7 +131,7 @@ def build_main_window_class(qt):
                 ("stop", "S&top", "Ctrl+5", "stop", self._stop, run_menu, True),
                 ("capture", "&Capture Image (Instant)...", "Ctrl+1", "camera", self._capture_image, tools_menu, True),
                 ("capture_delayed", "Capture Image (&Delayed)...", "Ctrl+2", "timer", self._delayed_capture, tools_menu, True),
-                ("ocr", "&Read Screen Text (OCR)...", "Ctrl+Shift+R", "ocr", self._read_screen_text, tools_menu, True),
+                ("ocr", "&Read Screen Text (OCR)...", "Ctrl+Shift+T", "ocr", self._read_screen_text, tools_menu, True),
                 ("region", "Capture Re&gion From Screen...", "Ctrl+Shift+D", "region", self._insert_region, tools_menu, True),
                 ("location", "Capture &Location From Screen...", "Ctrl+Shift+L", "location", self._capture_location, tools_menu, True),
                 ("offset", "Draw Target O&ffset...", "Ctrl+Shift+O", "offset", self._draw_offset_tool, tools_menu, True),
@@ -139,7 +139,7 @@ def build_main_window_class(qt):
                 ("winspy_show", "Show &Window Spy", "Ctrl+Shift+W", "window", self._show_winspy, tools_menu, True),
                 ("terminal_show", "Ter&minal", "Alt+F12", "terminal", self._show_terminal, tools_menu, True),
                 ("find_files", "Find in F&iles...", "Ctrl+Shift+F", "search", lambda: self._find_in_files(False), tools_menu, True),
-                ("replace_files", "Replace in Files...", "Ctrl+Shift+H", None, lambda: self._find_in_files(True), tools_menu, False),
+                ("replace_files", "Replace in Files...", "Ctrl+Shift+R", None, lambda: self._find_in_files(True), tools_menu, False),
                 ("goto_file", "Go to File...", "Ctrl+Shift+N", None, self._goto_file, tools_menu, False),
                 ("build", "&Build Standalone EXE", None, "build", self._build_exe, tools_menu, True),
                 ("guide_en", "User &Guide (English)", "F1", "book", lambda: self._show_doc("TUTORIAL.md", "User Guide"), help_menu, True),
@@ -201,6 +201,14 @@ def build_main_window_class(qt):
                 self._panel_buttons[icon] = button
             for key in ("files", "spy", "winspy", "terminal", "reference", "console"):
                 view_menu.addAction(self._docks[key].toggleViewAction())
+            try:
+                keymap = int(self._settings.value("keymap_version") or 0)
+            except Exception:
+                keymap = 0
+            if keymap < 2:
+                for key in self._actions:
+                    self._settings.remove("key_" + key)
+                self._settings.setValue("keymap_version", 2)
             for key, action in self._actions.items():
                 stored = self._settings.value("key_" + key)
                 if stored:
@@ -400,10 +408,11 @@ def build_main_window_class(qt):
 
         def _refresh_ui(self):
             running = self._engine.running
-            self._actions["run"].setEnabled(not running)
+            paused = running and self._engine.paused
+            self._actions["run"].setEnabled(not running or paused)
+            self._actions["run"].setText("&Resume Script" if paused else "&Run Script")
             self._actions["stop"].setEnabled(running)
-            self._actions["pause"].setEnabled(running)
-            self._actions["pause"].setText("&Resume" if self._engine.paused else "&Pause")
+            self._actions["pause"].setEnabled(running and not paused)
             editor = self.current_editor()
             path = getattr(editor, "_file_path", None) if editor else None
             name = os.path.basename(path) if path else "untitled"
@@ -560,8 +569,9 @@ def build_main_window_class(qt):
             form = QtWidgets.QFormLayout()
             needle_edit = QtWidgets.QLineEdit(dialog)
             form.addRow("Find:", needle_edit)
-            replace_edit = QtWidgets.QLineEdit(dialog)
+            replace_edit = None
             if replace:
+                replace_edit = QtWidgets.QLineEdit(dialog)
                 form.addRow("Replace with:", replace_edit)
             layout.addLayout(form)
             results = QtWidgets.QListWidget(dialog)
@@ -687,8 +697,12 @@ def build_main_window_class(qt):
             self._help_windows.append(dialog)
 
         def _run(self):
+            if self._engine.running:
+                if self._engine.paused:
+                    self._toggle_pause()
+                return
             editor = self.current_editor()
-            if editor is None or self._engine.running:
+            if editor is None:
                 return
             if getattr(editor, "_file_path", None) is None or editor.document().isModified():
                 if editor.document().isModified() and getattr(editor, "_file_path", None) is not None and not self._opt("autosave"):
