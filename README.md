@@ -47,8 +47,9 @@ Most automation tools gamble everything on a single locator strategy. When it br
 
 - **🖥️ Truly Cross-Platform** — Native Windows (UIA) and Linux (AT-SPI) targeting from the same script.
 - **🔌 SikuliX-Compatible** — Drop-in familiar syntax: `click()`, `type()`, `find()`, `wait()`, `findText()`, `exists()`, `Pattern`, `Region`.
-- **🔎 Element Spy & Window Spy** — Hover any control, press **Space**, and RPA Studio writes window-locked, resolution-proof locator code for you.
-- **📖 Built-in OCR Engine** — Embedded Tesseract (`eng`, `eng_best`, `tur`) for content validation and text-anchor clicks — no external install.
+- **🔎 Element Spy & Window Spy** — Hover any control, **right-click**, and RPA Studio writes window-locked, resolution-proof locator code for you.
+- **📖 Built-in OCR Engine** — Embedded Tesseract (`eng`, `eng_best`, `tur`, `dejavu_sans`) for content validation and text-anchor clicks — no external install. Search on-screen text with `findText`, `findWord`, `findLine`, `findWords`, and the `OCR` class.
+- **👀 Event Observation** — `onAppear` / `onVanish` / `onChange` handlers with blocking or background `observe()`, plus `Finder` for searching inside saved images.
 - **📦 Single-File Portability** — Copy one binary to deploy; delete one binary to decommission. No "DLL Hell."
 - **🛡️ Environment Isolation** — Runs from memory or a self-contained directory; never drops shared libraries into `System32` or `/usr/lib`.
 - **🧩 Full IDE** — Monokai editor with live syntax checking, autocomplete, capture tools, `.sikuli` folder support, integrated terminal, and pause/stop controls.
@@ -58,7 +59,7 @@ Most automation tools gamble everything on a single locator strategy. When it br
 ## 🚀 Quick Start
 
 1. Run **`RPAStudio.exe`** (first launch takes ~15–20 s while modules unpack).
-2. Open an example from **`File > Open Example`**, then press **▶ Run** (`Ctrl+^`).
+2. Open an example from **`File > Open Example`**, then press **▶ Run** (`Ctrl+3`).
 3. Pause with **`Ctrl+4`**, stop with **`Ctrl+5`**. Live output streams in the **Output** panel.
 
 A minimal dual-layer automation looks like this:
@@ -66,7 +67,7 @@ A minimal dual-layer automation looks like this:
 ```python
 # RPA Studio — Minimal Example (SikuliX-compatible syntax)
 Settings.MinSimilarity = 0.75      # Layer 2 vision tolerance
-Settings.BundlePath   = "./assets/"
+setBundlePath("./assets/")         # where the .png targets live
 
 def run():
     # Layer 1 (Accessibility Tree) tries first;
@@ -111,8 +112,9 @@ rpa_framework/
   packaging/         Nuitka single-file builder
 ```
 
-Build the portable binary via **`Tools > Build Standalone EXE`** or
-`.venv-build\Scripts\python.exe -m rpa_framework.packaging.build` → outputs `dist/RPAStudio.exe`, which runs on a clean machine with no Python, OpenCV, or Tesseract installed.
+Build the portable binary via **`Tools > Build Standalone EXE`**, the one-command
+`scripts\build_windows.ps1` (Windows) / `scripts/build_linux.sh` (Linux), or
+`.venv-build\Scripts\python.exe -m rpa_framework.packaging.build` → outputs `dist/RPAStudio.exe`, which runs on a clean machine with no Python, OpenCV, or Tesseract installed. Prebuilt Windows and Linux binaries are on the [Releases](https://github.com/ozcanr17/rpa-studio/releases) page. Full build matrix and library-install steps are in [BUILDING.md](BUILDING.md).
 
 ---
 
