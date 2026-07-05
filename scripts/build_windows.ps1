@@ -35,7 +35,12 @@ try {
         exit 1
     }
     $report = Join-Path $root "dist\selftest.txt"
-    & $exe --selftest $report
+    if (Test-Path $report) { Remove-Item $report -Force -Confirm:$false }
+    Start-Process -FilePath $exe -ArgumentList "--selftest", $report -Wait
+    if (-not (Test-Path $report)) {
+        Write-Host "Selftest produced no report"
+        exit 1
+    }
     Get-Content $report
     $failures = Select-String -Path $report -Pattern "^fail" -CaseSensitive:$false
     if ($failures) {
