@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rpa-framework"
+version = "1.0.0"
+description = "Cross-platform RPA framework with a SikuliX-compatible scripting API, native accessibility automation, and computer vision."
+readme = "rpa_framework/README.md"
+requires-python = ">=3.8"
+license = { text = "Proprietary" }
+authors = [{ name = "RPA Framework" }]
+keywords = ["rpa", "automation", "sikulix", "opencv", "accessibility", "ocr"]
+
+dependencies = [
+    "opencv-contrib-python>=4.8",
+    "numpy>=1.24",
+    "pytesseract>=0.3.10",
+    "mss>=9.0",
+    "python-xlib>=0.33 ; sys_platform == 'linux'",
+    "pywinauto>=0.6.8 ; sys_platform == 'win32'",
+    "pywin32>=306 ; sys_platform == 'win32'",
+    "comtypes>=1.2 ; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+gui = ["PyQt6>=6.5"]
+build = ["nuitka>=1.9"]
+
+[project.scripts]
+rpa-run = "rpa_framework.run:main"
+
+[project.gui-scripts]
+rpa-studio = "rpa_framework.ide:main"
+
+[tool.setuptools]
+packages = [
+    "rpa_framework",
+    "rpa_framework.core",
+    "rpa_framework.core.os_facade",
+    "rpa_framework.core.vision",
+    "rpa_framework.core.inspector",
+    "rpa_framework.compat",
+    "rpa_framework.ide",
+    "rpa_framework.packaging",
+]
+
+[tool.setuptools.package-data]
+rpa_framework = ["*.md", "examples/*.py", "examples/**/*"]
