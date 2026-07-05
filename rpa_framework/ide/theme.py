@@ -458,7 +458,7 @@ _LUCIDE = {
     "new": "file-plus",
     "open": "folder-open",
     "save": "save",
-    "camera": "scan",
+    "camera": "camera",
     "timer": "timer",
     "ocr": "scan-text",
     "region": "square-dashed",
