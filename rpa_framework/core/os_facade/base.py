@@ -1,4 +1,5 @@
 import abc
+import os
 import platform
 
 from ..exceptions import BackendError
@@ -28,16 +29,37 @@ def register_backend(name):
     return decorator
 
 
+_MSS_STATE = {"sct": None, "pid": None}
+
+
+def _mss_instance():
+    import mss
+    pid = os.getpid()
+    if _MSS_STATE["sct"] is None or _MSS_STATE["pid"] != pid:
+        try:
+            if _MSS_STATE["sct"] is not None:
+                _MSS_STATE["sct"].close()
+        except Exception:
+            pass
+        _MSS_STATE["sct"] = mss.mss()
+        _MSS_STATE["pid"] = pid
+    return _MSS_STATE["sct"]
+
+
 def mss_grab(region):
     import numpy as np
-    import mss
-    with mss.mss() as sct:
-        if region is None:
-            box = sct.monitors[0]
-        else:
-            r = region if isinstance(region, Rect) else Rect(*region)
-            box = {"left": r.x, "top": r.y, "width": r.width, "height": r.height}
-        frame = np.array(sct.grab(box))
+    if region is None:
+        box = None
+    else:
+        r = region if isinstance(region, Rect) else Rect(*region)
+        box = {"left": r.x, "top": r.y, "width": r.width, "height": r.height}
+    try:
+        sct = _mss_instance()
+        frame = np.array(sct.grab(box if box is not None else sct.monitors[0]))
+    except Exception:
+        _MSS_STATE["sct"] = None
+        sct = _mss_instance()
+        frame = np.array(sct.grab(box if box is not None else sct.monitors[0]))
     return frame[:, :, :3].copy()
 
 

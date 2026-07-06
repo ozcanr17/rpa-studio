@@ -1286,8 +1286,23 @@ def run_selftest(args):
     return 0 if all(line.startswith("[ok]") for line in lines) else 1
 
 
+def _enable_linux_a11y():
+    if sys.platform.startswith("win"):
+        return
+    os.environ.setdefault("QT_LINUX_ACCESSIBILITY_ALWAYS_ON", "1")
+    modules = os.environ.get("GTK_MODULES", "")
+    if "atk-bridge" not in modules:
+        os.environ["GTK_MODULES"] = (modules + ":" if modules else "") + "gail:atk-bridge"
+    try:
+        from ..core.inspector.linux_inspector import enable_session_a11y
+        enable_session_a11y()
+    except Exception:
+        pass
+
+
 def main(argv=None):
     multiprocessing.freeze_support()
+    _enable_linux_a11y()
     args = sys.argv if argv is None else list(argv)
     if "--selftest" in args:
         return run_selftest(args)

@@ -85,7 +85,15 @@ def friendly_error(exc, path):
     if name == "OCRError":
         return "OCRError: {}{}. Text reading failed; check Settings.OcrLanguage and that the area really contains text.".format(text, where)
     if name == "BackendError":
+        if "Atspi" in text or "at-spi" in text:
+            return "BackendError: {}{}. Accessibility is unavailable; restart the session or the target app, then try again.".format(text, where)
+        if "DISPLAY" in text or "display" in text:
+            return "BackendError: {}{}. No graphical display was found; run inside a desktop session, not over plain SSH.".format(text, where)
         return "BackendError: {}{}. A required system component is unavailable on this machine.".format(text, where)
+    if name == "PermissionError":
+        return "PermissionError: {}{}. The file or device is not writable by this user; check permissions or pick another location.".format(text, where)
+    if name in ("FileNotFoundError", "OSError", "IOError"):
+        return "{}: {}{}. A file or system resource was missing or unreachable; check the path and try again.".format(name, text, where)
     if name in ("TypeError", "ValueError", "AttributeError", "NameError", "KeyError", "IndexError"):
         return "{}: {}{}. This is a Python coding mistake in the script; the full traceback is above.".format(name, text, where)
     return "{}: {}{}".format(name, text, where)

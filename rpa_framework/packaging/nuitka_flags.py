@@ -3,7 +3,8 @@ import os
 APP_NAME = "RPAStudio"
 RUNNER_NAME = "rpa-run"
 OUTPUT_DIR = "dist"
-BASE_FLAGS = ("--standalone", "--assume-yes-for-downloads")
+BASE_FLAGS = ("--standalone", "--assume-yes-for-downloads", "--jobs=1", "--low-memory",
+              "--noinclude-custom-mode=Xlib.protocol.request:bytecode")
 ONEFILE_FLAG = "--onefile"
 ONEFILE_TEMP_SPEC = "{CACHE_DIR}/RPAStudio"
 QT_BINDINGS = (("PyQt6", "pyqt6"), ("PySide6", "pyside6"))
@@ -16,6 +17,7 @@ OPTIONAL_PLUGINS = (("gi", "gi"),)
 LINUX_QT_ANCHORS = ("libQt6XcbQpa.so", "libQt6Core.so")
 LINUX_GI_SO = ("libatspi.so.0",)
 LINUX_EXTRA_SO = (
+    "libatomic.so.1",
     "libxcb-cursor.so.0",
     "libxkbcommon.so.0",
     "libxkbcommon-x11.so.0",

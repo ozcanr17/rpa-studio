@@ -40,6 +40,13 @@ def slugify(text, fallback="item", limit=3):
     return "_".join(parts[:limit])
 
 
+def _a11y_hint(message):
+    import sys
+    if sys.platform.startswith("win"):
+        return message
+    return message + ". On Linux an app publishes its elements only if it was started after accessibility was switched on - restart the target application (RPA Studio enables accessibility at launch) and scrape again"
+
+
 def element_var(data):
     name = slugify(data.get("name") or data.get("automation_id") or "", "", limit=3)
     role = slugify(data.get("role") or "", "", limit=1)
@@ -775,7 +782,9 @@ def build_panels(qt):
                     target = child
                     break
             if target is None:
-                raise RuntimeError("could not reach the active window through accessibility")
+                raise RuntimeError(_a11y_hint("could not reach the active window through accessibility"))
+            if not inspector.children(target):
+                raise RuntimeError(_a11y_hint("the active window exposes no accessibility tree"))
             prefix = slugify(active.title, "window")
             lines = []
             seen = {}
@@ -801,7 +810,7 @@ def build_panels(qt):
                 if locator and locator.startswith("findElement"):
                     lines.append("{} = {}".format(name, locator))
             if not lines:
-                raise RuntimeError("no named elements found in the active window")
+                raise RuntimeError(_a11y_hint("no named elements found in the active window"))
             return "\n".join(lines)
 
         def _scrape_done(self):

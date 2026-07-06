@@ -32,6 +32,34 @@ def normalize_gray(image):
         return gray
 
 
+def template_locate(template, scene, threshold=0.8, scales=_DPI_FACTORS):
+    if cv2 is None:
+        raise VisionError("opencv is required")
+    tpl = FeatureMatcher._to_gray(template)
+    hay = FeatureMatcher._to_gray(scene)
+    best = None
+    for factor in scales:
+        th, tw = int(round(tpl.shape[0] * factor)), int(round(tpl.shape[1] * factor))
+        if th < 4 or tw < 4 or th > hay.shape[0] or tw > hay.shape[1]:
+            continue
+        probe = tpl if factor == 1.0 else cv2.resize(tpl, (tw, th), interpolation=cv2.INTER_AREA if factor < 1.0 else cv2.INTER_CUBIC)
+        try:
+            heat = cv2.matchTemplate(hay, probe, cv2.TM_CCOEFF_NORMED)
+        except Exception:
+            continue
+        _, score, _, loc = cv2.minMaxLoc(heat)
+        if best is None or score > best[0]:
+            best = (score, loc, tw, th)
+        if score >= 0.995:
+            break
+    if best is None or best[0] < threshold:
+        found = 0.0 if best is None else best[0]
+        raise VisionError("template score {:.2f} below required {:.2f}".format(found, threshold))
+    score, (x, y), tw, th = best
+    corners = [[x, y], [x + tw, y], [x + tw, y + th], [x, y + th]]
+    return MatchResult((x + tw / 2.0, y + th / 2.0), corners, (x, y, tw, th), score)
+
+
 def edge_map(image):
     gray = normalize_gray(image)
     gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)

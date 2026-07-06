@@ -12,11 +12,40 @@ from ..exceptions import BackendError
 _STATES = ("focused", "focusable", "enabled", "visible", "showing", "selected", "checked", "editable", "sensitive")
 
 
+def enable_session_a11y():
+    try:
+        from gi.repository import Gio, GLib
+    except Exception:
+        return False
+    done = False
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync(
+            "org.a11y.Bus", "/org/a11y/bus", "org.freedesktop.DBus.Properties", "Set",
+            GLib.Variant("(ssv)", ("org.a11y.Status", "IsEnabled", GLib.Variant("b", True))),
+            None, Gio.DBusCallFlags.NONE, 800, None)
+        done = True
+    except Exception:
+        pass
+    try:
+        source = Gio.SettingsSchemaSource.get_default()
+        if source is not None and source.lookup("org.gnome.desktop.interface", True) is not None:
+            settings = Gio.Settings.new("org.gnome.desktop.interface")
+            if not settings.get_boolean("toolkit-accessibility"):
+                settings.set_boolean("toolkit-accessibility", True)
+                settings.sync()
+            done = True
+    except Exception:
+        pass
+    return done
+
+
 @register_inspector("linux")
 class AtspiInspector(AccessibilityInspector):
     def __init__(self):
         if Atspi is None:
             raise BackendError("Atspi (PyGObject + at-spi2) is required on Linux")
+        enable_session_a11y()
         Atspi.init()
         self._coord = Atspi.CoordType.SCREEN
 

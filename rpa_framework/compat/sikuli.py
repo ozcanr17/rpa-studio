@@ -22,7 +22,7 @@ except ImportError:
 from ..core.exceptions import ElementNotFoundError, VisionError
 from ..core.inspector.base import InspectorFactory
 from ..core.os_facade.base import OSFacadeFactory, Rect
-from ..core.vision.feature_matcher import FeatureMatcher, MatchResult, load_image
+from ..core.vision.feature_matcher import FeatureMatcher, MatchResult, load_image, template_locate
 
 _IS_WINDOWS = platform.system() == "Windows"
 _UPSCALE_MIN = 90
@@ -327,6 +327,25 @@ def _matcher():
     return _STATE["matcher"]
 
 
+_TEMPLATE_CACHE = {}
+
+
+def _load_template(path):
+    resolved = _resolve_image(path)
+    try:
+        stamp = os.path.getmtime(resolved)
+    except OSError:
+        stamp = None
+    entry = _TEMPLATE_CACHE.get(resolved)
+    if entry is not None and entry[0] == stamp:
+        return entry[1]
+    image = load_image(resolved)
+    if len(_TEMPLATE_CACHE) > 64:
+        _TEMPLATE_CACHE.clear()
+    _TEMPLATE_CACHE[resolved] = (stamp, image)
+    return image
+
+
 def _ocr(lang=None, **kwargs):
     from ..packaging.runtime_paths import configured_ocr
     return configured_ocr(lang=lang or Settings.OcrLanguage, **kwargs)
@@ -363,7 +382,7 @@ def _scale_for(template):
     return min(_UPSCALE_CAP, float(_UPSCALE_MIN) / max(1, side))
 
 
-def _locate_scaled(template, scene, similar):
+def _locate_features(template, scene, similar):
     scale = _scale_for(template)
     result = _matcher().locate(_scaled(template, scale), _scaled(scene, scale), min_matches=4)
     required = max(4, int(round(similar * _SCORE_INLIERS)))
@@ -375,6 +394,25 @@ def _locate_scaled(template, scene, similar):
         corners = [[px / scale, py / scale] for px, py in result.corners]
         result = MatchResult((cx / scale, cy / scale), corners, (x / scale, y / scale, w / scale, h / scale), result.inliers)
     return result
+
+
+def _locate_template(template, scene, similar):
+    threshold = max(0.5, min(0.99, float(similar) - 0.03))
+    result = template_locate(template, scene, threshold)
+    return MatchResult(result.center, result.corners, result.bbox, result.inliers * _SCORE_INLIERS)
+
+
+def _locate_scaled(template, scene, similar):
+    small = min(template.shape[0], template.shape[1]) < _UPSCALE_MIN
+    plans = (_locate_template, _locate_features) if small else (_locate_features, _locate_template)
+    first_error = None
+    for plan in plans:
+        try:
+            return plan(template, scene, similar)
+        except VisionError as exc:
+            if first_error is None:
+                first_error = exc
+    raise first_error
 
 
 def _tile_origins(total, tile, step):
@@ -802,7 +840,7 @@ class Region:
         return Match(self.x + x, self.y + y, w, h, score, target)
 
     def _find_once(self, pattern, scene=None):
-        template = load_image(_resolve_image(pattern.path))
+        template = _load_template(pattern.path)
         if scene is None:
             scene = self._capture()
         similar = Settings.MinSimilarity if pattern.similarity is None else pattern.similarity
@@ -870,7 +908,7 @@ class Region:
 
     def findAll(self, target):
         pattern = _as_pattern(target)
-        template = load_image(_resolve_image(pattern.path))
+        template = _load_template(pattern.path)
         scene = self._capture()
         similar = Settings.MinSimilarity if pattern.similarity is None else pattern.similarity
         matches = self._collect_masked(template, scene, similar, pattern)
