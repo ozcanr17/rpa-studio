@@ -828,6 +828,39 @@ Windows; the actual rebuild must happen on Linux):
   files/0 problems, offscreen IDE smoke constructs SpyPanel with the new
   F8/Insert button text, GUI+headless dry-runs.
 
+**Session 17 (2026-07-06, on the Linux box): reliability wave.** Hybrid image
+search adds core.vision.feature_matcher.template_locate, a multi-scale
+matchTemplate pass tried first for small/flat crops (20ms vs 500ms per
+locate) with the SIFT/FLANN path as the fallback (or vice versa for larger
+templates); compat.sikuli._load_template caches decoded template images
+keyed by path+mtime. os_facade.base reuses one mss instance per process
+(4x faster warm captures) with a fail-and-recreate retry in mss_grab.
+Linux Element Spy/scrape: enable_session_a11y() flips org.a11y.Status and
+GNOME toolkit-accessibility on at IDE start and AtspiInspector init, plus
+QT_LINUX_ACCESSIBILITY_ALWAYS_ON / GTK_MODULES=gail:atk-bridge exported so
+spawned target apps expose a tree; scrape errors and friendly_error explain
+the "restart the target app" remedy and Atspi/DISPLAY/permission failures.
+Nuitka build tuned for the 4GB RAM Linux build box (--jobs=1 --low-memory,
+an Xlib.protocol.request bytecode override) plus libatomic.so.1 bundled for
+the Qt PDF plugin. Published as commit ca55b1d, pulled onto the Windows
+side in session 18.
+
+**Session 18 (2026-07-06, Windows side): synced + released windows-v1.3.0.**
+Pulled session 17 straight onto main (fast-forward, no conflicts). Found one
+real cross-platform bug before building: the session-17 Nuitka tuning
+(--jobs=1 --low-memory + the Xlib bytecode override) had landed in the
+shared BASE_FLAGS instead of a Linux-gated constant, so it was silently
+about to apply to the Windows build too - split into
+nuitka_flags.LINUX_BUILD_FLAGS, appended only when os.name != "nt" in
+build.py, verified with --dry-run. Also stress-tested the per-process mss
+reuse across alternating main/worker threads via .venv (mirrors the
+Asset Tester's threading.Thread capture path that broke BitBlt in session
+6) - the retry-on-exception in mss_grab recreates a fresh instance for
+whichever thread's grab() fails first, so no regression, just an accepted
+one-time recreation cost when threads alternate. Version bumped to 1.3.0.
+Windows portable folder rebuilt via scripts/build_windows.ps1 (.venv-build),
+--selftest verified, zipped, and released as windows-v1.3.0.
+
 **Immediate next action (USER, on the Linux box):** git pull main, prepare
 the build machine (dnf: xcb-util-cursor xcb-util xcb-util-image
 xcb-util-keysyms xcb-util-renderutil xcb-util-wm libxkbcommon-x11

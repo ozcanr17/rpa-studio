@@ -38,6 +38,8 @@ def build_command(onefile=False, console=False, headless=False):
     root = bundle_root()
     cmd = [sys.executable, "-m", "nuitka"]
     cmd.extend(nuitka_flags.BASE_FLAGS)
+    if os.name != "nt":
+        cmd.extend(nuitka_flags.LINUX_BUILD_FLAGS)
     if onefile:
         cmd.append(nuitka_flags.ONEFILE_FLAG)
         if os.name != "nt":

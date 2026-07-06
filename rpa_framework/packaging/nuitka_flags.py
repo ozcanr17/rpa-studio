@@ -3,8 +3,9 @@ import os
 APP_NAME = "RPAStudio"
 RUNNER_NAME = "rpa-run"
 OUTPUT_DIR = "dist"
-BASE_FLAGS = ("--standalone", "--assume-yes-for-downloads", "--jobs=1", "--low-memory",
-              "--noinclude-custom-mode=Xlib.protocol.request:bytecode")
+BASE_FLAGS = ("--standalone", "--assume-yes-for-downloads")
+LINUX_BUILD_FLAGS = ("--jobs=1", "--low-memory",
+                     "--noinclude-custom-mode=Xlib.protocol.request:bytecode")
 ONEFILE_FLAG = "--onefile"
 ONEFILE_TEMP_SPEC = "{CACHE_DIR}/RPAStudio"
 QT_BINDINGS = (("PyQt6", "pyqt6"), ("PySide6", "pyside6"))

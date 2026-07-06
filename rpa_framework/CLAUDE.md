@@ -24,8 +24,9 @@ These apply to every Python file you add or edit. Violations are rejected.
 
 ## STATUS
 - Phase 1 COMPLETE: OS facade (Linux xdotool, Windows win32 + pywinauto) plus
-  vision (SIFT / ORB + FLANN, no matchTemplate) plus OCR (pytesseract, custom
-  .traineddata through tessdata-dir).
+  vision (SIFT / ORB + FLANN, with a multi-scale matchTemplate fallback for
+  small/flat crops - core.vision.feature_matcher.template_locate) plus OCR
+  (pytesseract, custom .traineddata through tessdata-dir).
 - Phase 2 COMPLETE: cross-platform accessibility inspector and spy daemon
   (Linux AT-SPI through gi.repository.Atspi, Windows UIA through comtypes).
   Extracts role, name, AutomationId, class, bounding box, states, and pid, and
@@ -66,6 +67,17 @@ These apply to every Python file you add or edit. Violations are rejected.
   and GPU drivers (LINUX_LIB_SKIP - never bundle those). build_linux.sh
   writes run.sh (LD_LIBRARY_PATH export + wayland fallback - the documented
   launcher) and diagnose.sh (target-side missing-lib report) into the stage.
+- RELIABILITY WAVE (session 17): mss capture instance is reused per-process
+  (4x faster warm captures) with a fail-and-recreate retry in mss_grab, which
+  also makes it safe across threads (a new mss.mss() gets created for
+  whichever thread's grab() call fails first). Linux Element Spy/scrape now
+  turns on org.a11y.Status + toolkit-accessibility at IDE start and inspector
+  init (core.inspector.linux_inspector.enable_session_a11y) and
+  friendly_error explains Atspi/DISPLAY/permission failures in plain
+  language. nuitka_flags.LINUX_BUILD_FLAGS (--jobs=1 --low-memory, an Xlib
+  bytecode override, keep these Linux-only for 4GB RAM build machines) is
+  appended only when os.name != "nt" in build.py - do not fold it back into
+  BASE_FLAGS, that previously slowed down and risked the Windows build too.
 
 ## LAYOUT
 rpa_framework/
