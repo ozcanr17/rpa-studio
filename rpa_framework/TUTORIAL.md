@@ -343,6 +343,56 @@ For Citrix, VDI, or video streams with no accessibility tree:
     findUI("button", text="OK")       list Regions that look like an OK button
     findUI("field"); findUI("any", region=Region(0,0,800,600))
 
+`findUI` has two engines and picks the best one automatically:
+
+1. **AI vision (semantic).** If a UI-detection model is bundled (see below),
+   an offline ONNX neural network scans the screenshot and returns elements by
+   *meaning* - "this is a button", "this is an input field" - even when the
+   pixels, theme, or DPI have changed. Nothing leaves the machine: inference
+   runs locally on the CPU through the bundled onnxruntime.
+2. **Shape heuristics (fallback).** Without a model, the classic
+   contour-based detector (edges + rectangle filtering) is used, exactly as
+   before.
+
+Supported kinds with the default model labels: `button`, `field`, `checkbox`,
+`combobox`, `radio`, `link`, `icon`, `image`, `menu`, `slider`, `switch`,
+`tab`, `text`, `scrollbar`, `window`, plus `any`. Common synonyms are
+accepted (`input`/`edit`/`textbox` -> `field`, `dropdown`/`select` ->
+`combobox`, and so on).
+
+`Target` also gained a fourth self-healing anchor: after `element`, `image`,
+and `text` all fail, it asks the AI detector for an element whose class
+matches the Target's `role` (filtered by `text` when given). The `ui` anchor
+only activates when a model is bundled, so behavior without one is unchanged:
+
+    Target(role="button", text="Save", window="Editor").click()
+
+#### Enabling AI vision
+
+Drop a YOLO-format ONNX model into `vendor/models/` (source tree) or
+`models/` (portable build folder), for example `models/ui_detect.onnx`. Class
+names are read from the model metadata when present, otherwise from a
+`ui_detect.labels` file next to it (one class name per line), otherwise the
+default label list above is assumed. Everything works fully offline - the
+model file ships inside the app folder.
+
+#### Direct API (library use)
+
+    from rpa_framework.core import UIDetector, find_ui
+    from rpa_framework.packaging import configured_detector
+
+    detector = configured_detector()          bundled model, or None
+    detector = UIDetector("my_model.onnx")    explicit model file
+    hits = detector.detect(frame, kind="button", min_score=0.5)
+    hits[0].rect; hits[0].label; hits[0].score
+
+    boxes = find_ui(frame, "field", detector=detector)   Rect list, heuristic fallback
+
+The detector loads lazily on first use and is cached for the session. Scripts
+always execute in the runner child process, so inference never blocks the IDE;
+when embedding the library in your own GUI, call `detect` from a worker
+thread.
+
 ### 5.12 Dialogs and user input
 
     popup("done!")                    message box with OK
@@ -464,23 +514,32 @@ Linux specifics (RHEL/CentOS 8, dependencies, headless Xvfb) are in LINUX.md.
 
 ---
 
-## 9. Building the standalone binaries
+## 9. Building the portable folders
 
-    scripts\build_windows.ps1               Windows: dist\RPAStudio.exe (+ selftest)
-    scripts/build_linux.sh                  Linux GUI: dist/rpa-studio-linux.tar.gz
-    scripts/build_linux.sh headless         Linux runner: dist/rpa-run.bin
+Every artifact is a standalone portable FOLDER: copy it to a fresh, air-gapped
+Windows or Linux machine and it runs with zero installs - no Python, no
+OpenCV, no Tesseract, no onnxruntime. All shared libraries (`.dll` / `.so`)
+ship inside the folder.
+
+    scripts\build_windows.ps1               Windows IDE: dist\rpa-studio-windows\ (+ zip, + selftest)
+    scripts\build_windows.ps1 -Headless     Windows runner: dist\rpa-run-windows\
+    scripts/build_linux.sh                  Linux IDE: dist/rpa-studio-linux/ (+ tar.gz)
+    scripts/build_linux.sh headless         Linux runner: dist/rpa-run-linux/ (+ tar.gz)
 
 Or call the packager directly:
 
-    python -m rpa_framework.packaging.build             # GUI onefile
+    python -m rpa_framework.packaging.build             # GUI standalone folder
     python -m rpa_framework.packaging.build --headless  # rpa-run, no Qt
 
 Notes: Nuitka does not cross-compile (build Windows on Windows, Linux on
 Linux) and does not support Microsoft Store Python (use a python.org install).
 The first build downloads a C compiler and can take a while. To embed OCR, put
 `vendor/tesseract/` (binary + DLLs) and `vendor/tessdata/` (the `.traineddata`
-files) next to `rpa_framework` before building; they are bundled and wired up
-automatically. Flags: `--dry-run`, `--no-onefile`, `--console`. Full matrix in
+files) next to `rpa_framework` before building. To embed AI vision, put the
+`.onnx` UI-detection model (plus optional `.labels` file) in `vendor/models/`.
+Both are bundled and wired up automatically, and onnxruntime is included in
+the folder whenever it is installed in the build venv. Flags: `--dry-run`,
+`--console`, `--onefile` (legacy single-file build). Full matrix in
 BUILDING.md.
 
 ---
@@ -500,8 +559,11 @@ BUILDING.md.
   `rpa_framework` (source runs) or the exe was built without it.
 - **Clicks land oddly on multi-monitor setups** - keep the target app on the
   primary monitor for now, or scope with `Screen(1)`.
+- **findUI feels dumb (misses obvious buttons)** - no AI model is bundled, so
+  the shape heuristic is running; add a model under `models/` (see 5.11).
 - **Anything else** - run `RPAStudio.exe --selftest report.txt`: it probes the
-  backend, inspector, capture, OCR, docs, and examples and marks each ok/fail.
+  backend, inspector, capture, OCR, AI vision, docs, and examples and marks
+  each ok/fail.
 
 ---
 
@@ -509,7 +571,7 @@ BUILDING.md.
 
     rpa_framework/
       core/os_facade/   mouse, keyboard, screen capture, windows (per-OS)
-      core/vision/      SIFT/ORB image finding, OCR, VDI control detection
+      core/vision/      SIFT/ORB image finding, OCR, AI + heuristic UI detection
       core/inspector/   accessibility tree access (UIA / AT-SPI) + spy daemon
       compat/sikuli.py  the SikuliX-compatible scripting API
       ide/              editor, panels, capture tools, the safe script runner

@@ -40,7 +40,19 @@ def _dedupe(boxes):
     return kept
 
 
-def find_ui_regions(frame, kind="any"):
+def detect_ui(frame, kind="any", detector=None):
+    if detector is None:
+        return []
+    try:
+        return detector.detect(frame, kind)
+    except Exception:
+        return []
+
+
+def find_ui_regions(frame, kind="any", detector=None):
+    hits = detect_ui(frame, kind, detector)
+    if hits:
+        return [hit.rect for hit in hits]
     if cv2 is None or np is None:
         raise VisionError("opencv is required")
     aspect_min, aspect_max, h_min, h_max = _kind_spec(kind)
@@ -67,8 +79,8 @@ def find_ui_regions(frame, kind="any"):
     return _dedupe(boxes)
 
 
-def find_ui(frame, kind="any", text=None, ocr=None):
-    boxes = find_ui_regions(frame, kind)
+def find_ui(frame, kind="any", text=None, ocr=None, detector=None):
+    boxes = find_ui_regions(frame, kind, detector)
     if not text:
         return boxes
     if ocr is None:

@@ -6,11 +6,17 @@ Java, no OpenCV, no Tesseract required.
 
 ## Artifacts
 
+All artifacts are now portable standalone FOLDERS (no onefile): everything the
+app needs, including onnxruntime and any `.dll`/`.so` shared libraries, ships
+inside the folder, so a fresh air-gapped Windows or Linux machine runs it with
+zero installs.
+
 | Artifact | Platform | Built with | Entry |
 |---|---|---|---|
-| `dist/RPAStudio.exe` | Windows | `scripts/build_windows.ps1` | full IDE, onefile |
-| `dist/rpa-studio-linux.tar.gz` | Linux | `scripts/build_linux.sh` | full IDE, standalone folder + `run.sh` |
-| `dist/rpa-run.bin` | Linux | `scripts/build_linux.sh headless` | headless script runner, no Qt |
+| `dist/rpa-studio-windows/` + `.zip` | Windows | `scripts/build_windows.ps1` | full IDE folder, `RPAStudio.exe` inside |
+| `dist/rpa-run-windows/` | Windows | `scripts/build_windows.ps1 -Headless` | headless runner folder, `rpa-run.exe` inside |
+| `dist/rpa-studio-linux/` + `.tar.gz` | Linux | `scripts/build_linux.sh` | full IDE folder + `run.sh` |
+| `dist/rpa-run-linux/` + `.tar.gz` | Linux | `scripts/build_linux.sh headless` | headless runner folder, no Qt |
 | pip package `rpa-framework` | any | `pip install .` | library + `rpa-run` + `rpa-studio` commands |
 
 Nuitka does not cross-compile: build Windows artifacts on Windows and Linux
@@ -29,9 +35,10 @@ Build + verify (runs the compiled exe's `--selftest` automatically):
 
     powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
 
-Flags: `-NoOnefile` (fast folder build), `-Console` (keep a console for
-debugging), `-DryRun` (print the Nuitka command), `-Headless` (build
-`rpa-run.exe` instead of the IDE), `-SkipSelftest`.
+The result is the portable folder `dist\rpa-studio-windows\` plus a zip of it.
+Flags: `-Console` (keep a console for debugging), `-DryRun` (print the Nuitka
+command), `-Headless` (build the `rpa-run.exe` folder instead of the IDE),
+`-SkipSelftest`, `-NoZip`.
 
 ## Linux (RHEL / CentOS 8 and others)
 
@@ -44,8 +51,8 @@ One-time setup:
 
 Build:
 
-    scripts/build_linux.sh            # GUI -> dist/rpa-studio-linux.tar.gz
-    scripts/build_linux.sh headless   # runner -> dist/rpa-run.bin
+    scripts/build_linux.sh            # GUI -> dist/rpa-studio-linux/ + .tar.gz
+    scripts/build_linux.sh headless   # runner -> dist/rpa-run-linux/ + .tar.gz
 
 Target-machine notes, dependency matrix, and troubleshooting live in
 `rpa_framework/LINUX.md`.
@@ -77,7 +84,16 @@ automatically:
 
 - `vendor/tesseract/` - portable Tesseract binary + DLLs (enables OCR)
 - `vendor/tessdata/`  - language data (`eng`, `tur`, ...)
+- `vendor/models/`    - AI vision: a YOLO-format `.onnx` UI detection model
+  (e.g. `ui_detect.onnx`) plus an optional `<model>.labels` class list; enables
+  semantic `findUI` and the `ui` anchor fallback fully offline
 - `vendor/icons/`, `vendor/logo2.png` - branding (already in the repo)
+
+onnxruntime is bundled automatically when it is installed in the build venv
+(`--include-package` + `--include-package-data`); after the build,
+`packaging/build.py copy_native_libs` copies any `onnxruntime/capi` shared
+libraries the Nuitka scan missed into the dist folder (`.dll` on Windows,
+`.so*` on Linux).
 
 Check the Nuitka log for `Included data file` lines when touching bundled
 data; `--include-data-dir` silently skips `.py`/`.exe`/`.dll` files, which is
@@ -88,7 +104,7 @@ why the build uses `--include-raw-dir` for those.
 1. All tests green, constraint checker green.
 2. Build the platform artifact with the script above (selftest must pass).
 3. Tag and publish:
-   - Windows: tag `windows-vX.Y.Z`, attach `dist/RPAStudio.exe`.
+   - Windows: tag `windows-vX.Y.Z`, attach `dist/rpa-studio-windows.zip`.
    - Linux: tag `linux-vX.Y.Z`, attach `dist/rpa-studio-linux.tar.gz`.
 4. Keep `version` in `pyproject.toml` and `rpa_framework/__init__.py` in sync.
 

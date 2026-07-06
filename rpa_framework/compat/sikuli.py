@@ -1874,7 +1874,7 @@ def clickElement(role=None, name=None, automation_id=None, button=Button.LEFT, c
 
 
 _HEALED = {}
-_ANCHOR_ORDER = ("element", "image", "text")
+_ANCHOR_ORDER = ("element", "image", "text", "ui")
 
 
 class Target:
@@ -1929,6 +1929,15 @@ class Target:
         cx, cy = box.center
         return Location(scope.x + cx, scope.y + cy)
 
+    def _by_ui(self):
+        if not (self.role or self.text):
+            return None
+        from ..packaging.runtime_paths import configured_detector
+        if configured_detector() is None:
+            return None
+        hits = findUI(self.role or "any", self.text, self._scope())
+        return hits[0].getCenter() if hits else None
+
     def resolve(self):
         order = list(_ANCHOR_ORDER)
         healed = _HEALED.get(self._key())
@@ -1969,13 +1978,11 @@ class Target:
 
 def findUI(kind="any", text=None, region=None):
     from ..core.vision.ui_finder import find_ui
+    from ..packaging.runtime_paths import configured_detector, configured_ocr
     scope = region if isinstance(region, Region) else _screen()
     frame = scope._capture()
-    ocr = None
-    if text:
-        from ..packaging.runtime_paths import configured_ocr
-        ocr = configured_ocr()
-    boxes = find_ui(frame, kind, text, ocr)
+    ocr = configured_ocr() if text else None
+    boxes = find_ui(frame, kind, text, ocr, configured_detector())
     return [Region(scope.x + box.x, scope.y + box.y, box.width, box.height) for box in boxes]
 
 

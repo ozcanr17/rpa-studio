@@ -1,10 +1,10 @@
 #!/bin/sh
-# One-command Linux build. Produces:
-#   dist/rpa-run.bin                 headless zero-install runner (--headless only)
-#   dist/rpa-studio-linux.tar.gz     standalone GUI folder build (default)
+# One-command Linux build. Produces portable standalone folders:
+#   dist/rpa-studio-linux/ + dist/rpa-studio-linux.tar.gz     GUI build (default)
+#   dist/rpa-run-linux/ + dist/rpa-run-linux.tar.gz           headless runner
 # Usage:
 #   scripts/build_linux.sh            GUI folder build + tar.gz package
-#   scripts/build_linux.sh headless   headless onefile runner only
+#   scripts/build_linux.sh headless   headless runner folder + tar.gz
 # Build on a machine as old as (or older than) the deployment target so glibc matches.
 
 set -e
@@ -27,22 +27,26 @@ fi
 
 if [ "$1" = "headless" ]; then
     "$python" -m rpa_framework.packaging.build --headless
-    echo "Artifact: $root/dist/rpa-run.bin"
-    exit 0
+    built="$root/dist/runner_app.dist"
+    stage="$root/dist/rpa-run-linux"
+    launcher="rpa-run.bin"
+else
+    "$python" -m rpa_framework.packaging.build
+    built="$root/dist/app.dist"
+    stage="$root/dist/rpa-studio-linux"
+    launcher="RPAStudio.bin"
 fi
 
-"$python" -m rpa_framework.packaging.build --no-onefile
-
-stage="$root/dist/rpa-studio-linux"
 rm -rf "$stage"
-cp -r "$root/dist/app.dist" "$stage"
+mv "$built" "$stage"
 cp "$root/rpa_framework/LINUX.md" "$stage/LINUX.md"
-cat > "$stage/run.sh" << 'EOF'
+cat > "$stage/run.sh" << EOF
 #!/bin/sh
-cd "$(dirname "$0")"
-exec ./RPAStudio.bin "$@"
+cd "\$(dirname "\$0")"
+exec ./$launcher "\$@"
 EOF
-chmod +x "$stage/run.sh" "$stage/RPAStudio.bin" 2>/dev/null || true
+chmod +x "$stage/run.sh" "$stage/$launcher" 2>/dev/null || true
 
-tar czf "$root/dist/rpa-studio-linux.tar.gz" -C "$root/dist" rpa-studio-linux
-echo "Artifact: $root/dist/rpa-studio-linux.tar.gz"
+tar czf "$stage.tar.gz" -C "$root/dist" "$(basename "$stage")"
+echo "Portable folder: $stage"
+echo "Artifact: $stage.tar.gz"

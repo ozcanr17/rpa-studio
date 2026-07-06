@@ -1,9 +1,13 @@
 # RPA Framework - Build Handoff (Claude Code)
 
-Commercial-grade, cross-platform RPA framework. Reliability comes from a dual
-strategy: native accessibility trees are the primary interaction path, with
-computer vision plus OCR as the visual fallback. The final artifact is a single
-zero-install executable built with Nuitka.
+Commercial-grade, cross-platform RPA framework. Reliability comes from a
+layered strategy: native accessibility trees are the primary interaction path,
+with AI vision (offline ONNX UI detection), computer vision, and OCR as the
+visual fallbacks. The final artifact is a zero-install standalone portable
+FOLDER built with Nuitka (onefile was dropped; --onefile remains as a legacy
+opt-in). The folder must run fully offline on a fresh air-gapped Windows or
+Linux machine: framework, onnxruntime, model weights, Tesseract, and every
+OS shared library (.dll/.so) ship inside it.
 
 ## NON-NEGOTIABLE CODE CONSTRAINTS
 These apply to every Python file you add or edit. Violations are rejected.
@@ -37,6 +41,17 @@ These apply to every Python file you add or edit. Violations are rejected.
   (find/click/type/wait/Pattern/Region/Key and friends) injected into every
   script by ide/runner.py, so existing SikuliX .py scripts run in the IDE.
   Docs: TUTORIAL.md (user guide), examples/ (runnable samples).
+- AI VISION COMPLETE: core/vision/ui_detector.py (UIDetector + Detection,
+  lazy onnxruntime, YOLO v5/v8 output parsing, letterbox + NMS, labels from
+  model metadata / <model>.labels / DEFAULT_LABELS). find_ui/find_ui_regions
+  take an optional detector and fall back to the contour heuristic;
+  sikuli.findUI wires runtime_paths.configured_detector (cached, returns None
+  when no model), and Target gained a fourth "ui" anchor that only activates
+  when a model is bundled. Model files live in vendor/models/*.onnx.
+- PACKAGING NOW FOLDER-FIRST: build.py defaults to --standalone (no onefile);
+  copy_native_libs() post-copies onnxruntime/capi shared libs Nuitka misses;
+  scripts stage dist/rpa-studio-windows(+.zip), dist/rpa-run-windows,
+  dist/rpa-studio-linux(+.tar.gz), dist/rpa-run-linux(+.tar.gz).
 
 ## LAYOUT
 rpa_framework/
@@ -53,6 +68,8 @@ rpa_framework/
     vision/
       feature_matcher.py   FeatureMatcher, MatchResult, load_image
       ocr_engine.py        OCREngine, TextBox
+      ui_detector.py       UIDetector, Detection (lazy onnxruntime, YOLO onnx)
+      ui_finder.py         find_ui, find_ui_regions, detect_ui (AI + heuristic)
     inspector/
       base.py              AccessibilityInspector ABC, UIElement, InspectorFactory
       linux_inspector.py   AtspiInspector

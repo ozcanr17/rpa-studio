@@ -34,7 +34,7 @@ def _data_flags(root):
     return flags
 
 
-def build_command(onefile=True, console=False, headless=False):
+def build_command(onefile=False, console=False, headless=False):
     root = bundle_root()
     cmd = [sys.executable, "-m", "nuitka"]
     cmd.extend(nuitka_flags.BASE_FLAGS)
@@ -56,6 +56,8 @@ def build_command(onefile=True, console=False, headless=False):
     for package in nuitka_flags.OPTIONAL_PACKAGES:
         if importlib.util.find_spec(package) is not None:
             cmd.append("--include-package=" + package)
+            if package in nuitka_flags.PACKAGE_DATA:
+                cmd.append("--include-package-data=" + package)
     cmd.extend(_data_flags(root))
     if os.name == "nt" and not console and not headless:
         cmd.append(nuitka_flags.WINDOWS_NO_CONSOLE)
@@ -70,6 +72,38 @@ def build_command(onefile=True, console=False, headless=False):
         cmd.append("--output-filename=" + nuitka_flags.output_filename())
         cmd.append(os.path.join(root, "rpa_framework", "ide", "app.py"))
     return cmd
+
+
+def dist_dir(headless=False):
+    name = "runner_app" if headless else "app"
+    return os.path.join(bundle_root(), nuitka_flags.OUTPUT_DIR, name + ".dist")
+
+
+def _is_shared_lib(name):
+    lowered = name.lower()
+    return lowered.endswith((".dll", ".dylib", ".pyd")) or ".so" in lowered
+
+
+def copy_native_libs(target_root):
+    import shutil
+    for package, subdir in nuitka_flags.NATIVE_LIB_PACKAGES:
+        spec = importlib.util.find_spec(package)
+        locations = list(spec.submodule_search_locations or []) if spec else []
+        if not locations:
+            continue
+        source = os.path.join(locations[0], subdir)
+        if not os.path.isdir(source):
+            continue
+        target = os.path.join(target_root, package, subdir)
+        os.makedirs(target, exist_ok=True)
+        for name in os.listdir(source):
+            destination = os.path.join(target, name)
+            if not _is_shared_lib(name) or os.path.exists(destination):
+                continue
+            try:
+                shutil.copy2(os.path.join(source, name), destination)
+            except Exception:
+                pass
 
 
 def pregenerate_com_bindings():
@@ -107,7 +141,7 @@ def build_app_icon():
 
 def main(argv=None):
     args = sys.argv[1:] if argv is None else list(argv)
-    onefile = "--no-onefile" not in args
+    onefile = "--onefile" in args
     console = "--console" in args
     headless = "--headless" in args
     if "--dry-run" in args:
@@ -118,7 +152,10 @@ def main(argv=None):
         build_app_icon()
     cmd = build_command(onefile, console, headless)
     print(subprocess.list2cmdline(cmd))
-    return subprocess.call(cmd, cwd=bundle_root())
+    status = subprocess.call(cmd, cwd=bundle_root())
+    if status == 0 and not onefile:
+        copy_native_libs(dist_dir(headless))
+    return status
 
 
 if __name__ == "__main__":

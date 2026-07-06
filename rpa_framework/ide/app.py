@@ -141,7 +141,7 @@ def build_main_window_class(qt):
                 ("find_files", "Find in F&iles...", "Ctrl+Shift+F", "search", lambda: self._find_in_files(False), tools_menu, True),
                 ("replace_files", "Replace in Files...", "Ctrl+Shift+R", None, lambda: self._find_in_files(True), tools_menu, False),
                 ("goto_file", "Go to File...", "Ctrl+Shift+N", None, self._goto_file, tools_menu, False),
-                ("build", "&Build Standalone EXE", None, "build", self._build_exe, tools_menu, True),
+                ("build", "&Build Standalone App", None, "build", self._build_exe, tools_menu, True),
                 ("guide_en", "User &Guide (English)", "F1", "book", lambda: self._show_doc("TUTORIAL.md", "User Guide"), help_menu, True),
                 ("guide_tr", "Kullanim &Kilavuzu (Turkce)", "F2", None, lambda: self._show_doc("KILAVUZ.md", "Kullanim Kilavuzu"), help_menu, False),
                 ("about", "&About RPA Studio", None, None, self._about, help_menu, False),
@@ -944,7 +944,7 @@ def build_main_window_class(qt):
             proc.readyReadStandardOutput.connect(lambda: self._console.append(bytes(proc.readAllStandardOutput()).decode("utf-8", "replace"), "tool"))
             proc.finished.connect(self._build_finished)
             self._build_process = proc
-            self._console.append("starting EXE build, this can take a long time...\n", "tool")
+            self._console.append("starting standalone build, this can take a long time...\n", "tool")
             self._actions["build"].setEnabled(False)
             proc.start(sys.executable, ["-m", "rpa_framework.packaging.build"])
 
@@ -1225,7 +1225,7 @@ def _selftest_lines():
     warnings.filterwarnings("ignore", message="Revert to STA COM threading mode")
     from ..core.os_facade.base import OSFacadeFactory, Rect
     from ..core.inspector.base import InspectorFactory
-    from ..packaging.runtime_paths import configured_ocr, docs_path, examples_dir, tessdata_dir, tesseract_cmd
+    from ..packaging.runtime_paths import configured_detector, configured_ocr, docs_path, examples_dir, tessdata_dir, tesseract_cmd, ui_model_path
     lines = []
 
     def probe(name, fn):
@@ -1264,6 +1264,14 @@ def _selftest_lines():
     probe("tesseract_cmd", tesseract_cmd)
     probe("tessdata_dir", tessdata_dir)
     probe("ocr_read", ocr_probe)
+
+    def vision_ai_probe():
+        import importlib.util
+        detector = configured_detector()
+        runtime = importlib.util.find_spec("onnxruntime") is not None
+        return {"onnxruntime": runtime, "model": ui_model_path(), "labels": detector.labels if detector else None}
+
+    probe("vision_ai", vision_ai_probe)
     probe("docs", lambda: (docs_path("TUTORIAL.md"), docs_path("KILAVUZ.md")))
     probe("examples", examples_dir)
     return lines
