@@ -106,6 +106,116 @@ def copy_native_libs(target_root):
                 pass
 
 
+def _run_lines(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True).stdout.splitlines()
+    except Exception:
+        return []
+
+
+def _shared_entries(lines):
+    entries = {}
+    for line in lines:
+        if "=>" not in line:
+            continue
+        name, _sep, rest = line.partition("=>")
+        name = name.strip().split(" (")[0].strip()
+        target = rest.strip().split(" (")[0].strip()
+        if name and target and target != "not found" and target.startswith("/"):
+            entries[name] = target
+    return entries
+
+
+def _lib_skipped(name):
+    lowered = name.lower()
+    return any(lowered.startswith(skip.lower()) for skip in nuitka_flags.LINUX_LIB_SKIP)
+
+
+def _qt_wheel_lib_dirs():
+    folders = []
+    for module, _plugin in nuitka_flags.QT_BINDINGS:
+        spec = importlib.util.find_spec(module)
+        locations = list(spec.submodule_search_locations or []) if spec else []
+        for base in locations:
+            for sub in ("Qt6", "Qt"):
+                path = os.path.join(base, sub, "lib")
+                if os.path.isdir(path):
+                    folders.append(path)
+    return folders
+
+
+def _dist_lib_dir(target_root):
+    for base, _dirs, files in os.walk(target_root):
+        for name in files:
+            if name.startswith(nuitka_flags.LINUX_QT_ANCHORS):
+                return base
+    return None
+
+
+def _system_lib(name, folders, cache):
+    for folder in folders:
+        path = os.path.join(folder, name)
+        if os.path.isfile(path):
+            return path
+    return cache.get(name)
+
+
+def _external_deps(path, root_real):
+    found = {}
+    for name, target in _shared_entries(_run_lines(["ldd", path])).items():
+        try:
+            resolved = os.path.realpath(target)
+        except Exception:
+            continue
+        if not resolved.startswith(root_real + os.sep):
+            found[name] = target
+    return found
+
+
+def bundle_linux_libs(target_root):
+    if os.name == "nt":
+        return
+    import shutil
+    root_real = os.path.realpath(target_root)
+    qt_lib_dir = _dist_lib_dir(target_root)
+    lib_dir = qt_lib_dir or target_root
+    present = set()
+    binaries = []
+    for base, _dirs, files in os.walk(target_root):
+        for name in files:
+            present.add(name)
+            if ".so" in name or name.endswith(".bin"):
+                binaries.append(os.path.join(base, name))
+    folders = _qt_wheel_lib_dirs() + list(nuitka_flags.LINUX_LIB_DIRS)
+    cache = _shared_entries(_run_lines(["ldconfig", "-p"]))
+    queue = []
+    if qt_lib_dir is not None:
+        for name in nuitka_flags.LINUX_EXTRA_SO:
+            path = _system_lib(name, folders, cache)
+            if path is not None:
+                queue.append((name, path))
+            elif name not in present:
+                print("linux-libs: MISSING on build machine: " + name)
+    for path in binaries:
+        queue.extend(_external_deps(path, root_real).items())
+    copied = []
+    while queue:
+        name, path = queue.pop()
+        if name in present or _lib_skipped(name):
+            continue
+        destination = os.path.join(lib_dir, name)
+        try:
+            shutil.copy2(os.path.realpath(path), destination)
+        except Exception:
+            continue
+        present.add(name)
+        copied.append(name)
+        queue.extend(_external_deps(destination, root_real).items())
+    print("linux-libs: bundled {} into {}".format(len(copied), lib_dir))
+    for name in sorted(copied):
+        print("linux-libs:   + " + name)
+
+
 def pregenerate_com_bindings():
     if os.name != "nt":
         return
@@ -155,6 +265,7 @@ def main(argv=None):
     status = subprocess.call(cmd, cwd=bundle_root())
     if status == 0 and not onefile:
         copy_native_libs(dist_dir(headless))
+        bundle_linux_libs(dist_dir(headless))
     return status
 
 

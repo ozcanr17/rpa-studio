@@ -95,6 +95,17 @@ onnxruntime is bundled automatically when it is installed in the build venv
 libraries the Nuitka scan missed into the dist folder (`.dll` on Windows,
 `.so*` on Linux).
 
+On Linux, `packaging/build.py bundle_linux_libs` then makes the folder fully
+self-contained: it copies the dlopen'ed xcb family Qt 6.5+ needs at run time
+(`libxcb-cursor.so.0` and friends - invisible to dependency scanners, which is
+why linux-v1.0.0 failed on clean machines) plus every other externally
+resolved `.so`, excluding only glibc and GPU drivers which must come from the
+target OS. The staged folder gets a `run.sh` (exports `LD_LIBRARY_PATH`, picks
+wayland when there is no X11) and a `diagnose.sh` (run it on the target to
+list any library that still fails to resolve). Watch the build output for
+`linux-libs: MISSING on build machine:` lines - install those packages on the
+BUILD machine and rebuild, or the bundle will not be complete.
+
 Check the Nuitka log for `Included data file` lines when touching bundled
 data; `--include-data-dir` silently skips `.py`/`.exe`/`.dll` files, which is
 why the build uses `--include-raw-dir` for those.

@@ -561,6 +561,11 @@ BUILDING.md.
   primary monitor for now, or scope with `Screen(1)`.
 - **findUI feels dumb (misses obvious buttons)** - no AI model is bundled, so
   the shape heuristic is running; add a model under `models/` (see 5.11).
+- **Linux: "could not load the Qt platform plugin xcb" / "xcb-cursor0 is
+  needed"** - start the app with `./run.sh` (not the raw `.bin`) and rebuild
+  with the current build script if the folder predates the self-contained
+  bundling; `sh diagnose.sh` inside the folder lists anything still missing.
+  Details in LINUX.md.
 - **Anything else** - run `RPAStudio.exe --selftest report.txt`: it probes the
   backend, inspector, capture, OCR, AI vision, docs, and examples and marks
   each ok/fail.

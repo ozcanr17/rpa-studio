@@ -745,15 +745,71 @@ Two architecture changes requested together (Roles A + C):
   the exact flag set (GUI + headless); ps1 parses clean, sh -n clean; full
   source selftest all [ok] including vision_ai.
 
-**Immediate next action:** merge the session-14 PR, then rebuild both
-platform artifacts with the new scripts and attach the folder packages to the
-next releases. No trained UI-detection model is bundled yet - acquiring or
-training one (YOLO format, exported to ONNX, classes matching
-vendor/models/ui_detect.labels) is the top Role A follow-up. Git workflow:
-direct pushes to main and merging unreviewed PRs both require explicit user
-approval in this environment; push feature branches and open PRs with gh. The
-remaining backlog is Section 5 (Role A known-gaps work and Role B polish,
-e.g. welcome tab, multi-monitor capture coordinates).
+**Session 14 addendum (2026-07-06, same day):** PR #3 was merged to main
+(user-approved), the Windows folder artifact was rebuilt from main, the
+compiled selftest passed end to end (including the vision_ai probe proving
+onnxruntime loads inside the frozen folder), and GitHub release
+**windows-v1.1.0** was published with dist/rpa-studio-windows.zip (207 MB)
+attached.
+
+**Session 15 (2026-07-06): Linux zero-install fix (Qt xcb-cursor).**
+The user ran the linux-v1.0.0 folder on an air-gapped box and hit
+"From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb
+platform plugin ... Aborted (core dumped)". Root cause: Qt >= 6.5 dlopens
+libxcb-cursor.so.0 at run time, so Nuitka's link-time dependency scan never
+bundles it, and the target has no packages. Fix (all code shippable from
+Windows; the actual rebuild must happen on Linux):
+- packaging/build.py bundle_linux_libs(): runs automatically after every
+  Linux folder build. Seeds from LINUX_EXTRA_SO (the dlopen'ed xcb family:
+  libxcb-cursor.so.0, libxkbcommon-x11, icccm/image/keysyms/render-util/
+  shape/xkb/randr/render/shm/sync/xfixes) found via Qt wheel lib dirs ->
+  LINUX_LIB_DIRS -> ldconfig -p, then sweeps every .so/.bin in the dist with
+  a recursive ldd fixpoint and copies every externally-resolved library into
+  the dist Qt lib dir (next to libQt6XcbQpa, so the plugin RUNPATH $ORIGIN
+  finds them even without the launcher). LINUX_LIB_SKIP protects what must
+  NEVER be bundled: glibc family, ld-linux, libstdc++/libgcc_s, libGL/EGL/
+  GLX/GLdispatch/OpenGL, libdrm/gbm/vulkan/cuda/nvidia, libwayland-* (GPU +
+  loader + session libs come from the target OS). Prints
+  "linux-libs: MISSING on build machine: X" when something cannot be bundled
+  - that means install it on the BUILD machine and rebuild. Headless builds
+  skip the xcb seed (no Qt) but still get the self-containment sweep.
+- scripts/build_linux.sh: run.sh is now the documented launcher - computes
+  the Qt lib dir via find, exports LD_LIBRARY_PATH=(stage:qtlib:existing),
+  auto-selects QT_QPA_PLATFORM=wayland when DISPLAY is empty but
+  WAYLAND_DISPLAY is set; diagnose.sh ships inside every stage (prints
+  session vars, glibc version, and every "not found" from ldd over all
+  bundled .so/.bin - empty list = complete bundle) and the build runs it
+  once as an informational check.
+- Docs: LINUX.md xcb bullet rewritten around rebuild+run.sh+diagnose.sh
+  (target-side dnf/apt is only a stopgap for old artifacts; build-machine
+  package list documented since the bundle copies from there), stale onefile
+  bullet trimmed, Turkish summary updated (run.sh launcher, gomulu xcb);
+  BUILDING.md bundle_linux_libs paragraph; TUTORIAL/KILAVUZ troubleshooting
+  bullets; CLAUDE.md LINUX SELF-CONTAINMENT status bullet.
+- Verified on Windows: 20-check unit suite for the pure helpers
+  (_shared_entries parses ldd AND ldconfig -p lines incl. the "(libc6,
+  x86-64)" arch tag; _lib_skipped keep/skip matrix; _dist_lib_dir walk);
+  constraint checker 49 files/0 problems; sh -n on build_linux.sh; the
+  run.sh/diagnose.sh heredocs expanded standalone and syntax-checked;
+  GUI+headless --dry-run regressions; 28-check vision suite still green.
+  GOTCHA found: ntpath.isabs("/usr/lib") is False on Python 3.13+ - the
+  parser uses target.startswith("/") instead of os.path.isabs.
+
+**Immediate next action (USER, on the Linux box):** git pull the session-15
+branch (or main once merged), install the xcb family on the BUILD machine if
+absent (dnf: xcb-util-cursor xcb-util xcb-util-image xcb-util-keysyms
+xcb-util-renderutil xcb-util-wm libxkbcommon-x11), run
+`scripts/build_linux.sh`, confirm the "bundle check" section is empty and no
+"linux-libs: MISSING" lines appear, copy dist/rpa-studio-linux.tar.gz to the
+air-gapped target, extract, `./run.sh`. If anything still fails there,
+`sh diagnose.sh` output is the exact escalation artifact. Then publish
+release linux-v1.1.0 with the tar.gz. No trained UI-detection model is
+bundled yet - acquiring or training one (YOLO format, exported to ONNX,
+classes matching vendor/models/ui_detect.labels) is the top Role A follow-up.
+Git workflow: direct pushes to main and merging unreviewed PRs both require
+explicit user approval in this environment; push feature branches and open
+PRs with gh. The remaining backlog is Section 5 (Role A known-gaps work and
+Role B polish, e.g. welcome tab, multi-monitor capture coordinates).
 
 Standing flags: **builds must use `.venv-build` (python.org 3.14), never
 `.venv`** (Store Python cannot link); run `--selftest` on the built app after

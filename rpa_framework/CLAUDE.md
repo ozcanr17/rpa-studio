@@ -52,6 +52,13 @@ These apply to every Python file you add or edit. Violations are rejected.
   copy_native_libs() post-copies onnxruntime/capi shared libs Nuitka misses;
   scripts stage dist/rpa-studio-windows(+.zip), dist/rpa-run-windows,
   dist/rpa-studio-linux(+.tar.gz), dist/rpa-run-linux(+.tar.gz).
+- LINUX SELF-CONTAINMENT: bundle_linux_libs() in build.py runs after every
+  Linux folder build - copies the dlopen'ed Qt 6.5+ xcb family
+  (libxcb-cursor.so.0 etc., LINUX_EXTRA_SO) plus every externally resolved
+  .so found by a recursive ldd fixpoint into the Qt lib dir, excluding glibc
+  and GPU drivers (LINUX_LIB_SKIP - never bundle those). build_linux.sh
+  writes run.sh (LD_LIBRARY_PATH export + wayland fallback - the documented
+  launcher) and diagnose.sh (target-side missing-lib report) into the stage.
 
 ## LAYOUT
 rpa_framework/

@@ -567,6 +567,11 @@ matris BUILDING.md'dedir.
   birincil monitörde tutun veya `Screen(1)` ile sınırlayın.
 - **findUI bariz düğmeleri kaçırıyor** - paketlenmiş yapay zeka modeli yok,
   şekil sezgisi çalışıyor; `models/` altına bir model ekleyin (bkz. 5.11).
+- **Linux: "could not load the Qt platform plugin xcb" / "xcb-cursor0 is
+  needed"** - uygulamayı ham `.bin` yerine `./run.sh` ile başlatın; klasör
+  kendinden-tam paketlemeden eskiyse güncel derleme betiğiyle yeniden
+  derleyin. Klasördeki `sh diagnose.sh` hâlâ eksik olanı listeler. Ayrıntılar
+  LINUX.md'de.
 - **Başka her şey** - `RPAStudio.exe --selftest report.txt` çalıştırın: arka
   ucu, inceleyiciyi, yakalamayı, OCR'yi, yapay zeka görüsünü, belgeleri ve
   örnekleri sınar ve her birini ok/fail olarak işaretler.
