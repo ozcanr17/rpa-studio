@@ -1,9 +1,9 @@
 param(
-    [switch]$NoOnefile,
     [switch]$Console,
     [switch]$Headless,
     [switch]$DryRun,
-    [switch]$SkipSelftest
+    [switch]$SkipSelftest,
+    [switch]$NoZip
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,7 +19,6 @@ if (-not (Test-Path $python)) {
 }
 
 $buildArgs = @()
-if ($NoOnefile) { $buildArgs += "--no-onefile" }
 if ($Console) { $buildArgs += "--console" }
 if ($Headless) { $buildArgs += "--headless" }
 if ($DryRun) { $buildArgs += "--dry-run" }
@@ -28,26 +27,50 @@ Push-Location $root
 try {
     & $python -m rpa_framework.packaging.build @buildArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    if ($DryRun -or $Headless -or $NoOnefile -or $SkipSelftest) { exit 0 }
-    $exe = Join-Path $root "dist\RPAStudio.exe"
-    if (-not (Test-Path $exe)) {
-        Write-Host "Build finished but $exe is missing"
+    if ($DryRun) { exit 0 }
+
+    if ($Headless) {
+        $built = Join-Path $root "dist\runner_app.dist"
+        $stage = Join-Path $root "dist\rpa-run-windows"
+        $exeName = "rpa-run.exe"
+    } else {
+        $built = Join-Path $root "dist\app.dist"
+        $stage = Join-Path $root "dist\rpa-studio-windows"
+        $exeName = "RPAStudio.exe"
+    }
+
+    if (-not (Test-Path (Join-Path $built $exeName))) {
+        Write-Host "Build finished but $built\$exeName is missing"
         exit 1
     }
-    $report = Join-Path $root "dist\selftest.txt"
-    if (Test-Path $report) { Remove-Item $report -Force -Confirm:$false }
-    Start-Process -FilePath $exe -ArgumentList "--selftest", $report -Wait
-    if (-not (Test-Path $report)) {
-        Write-Host "Selftest produced no report"
-        exit 1
+    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -Confirm:$false }
+    Move-Item $built $stage
+    $exe = Join-Path $stage $exeName
+
+    if (-not $Headless -and -not $SkipSelftest) {
+        $report = Join-Path $root "dist\selftest.txt"
+        if (Test-Path $report) { Remove-Item $report -Force -Confirm:$false }
+        Start-Process -FilePath $exe -ArgumentList "--selftest", $report -Wait
+        if (-not (Test-Path $report)) {
+            Write-Host "Selftest produced no report"
+            exit 1
+        }
+        Get-Content $report
+        $failures = Select-String -Path $report -Pattern "\[fail\]" -CaseSensitive:$false
+        if ($failures) {
+            Write-Host "SELFTEST FAILED"
+            exit 1
+        }
+        Write-Host "Selftest passed."
     }
-    Get-Content $report
-    $failures = Select-String -Path $report -Pattern "^fail" -CaseSensitive:$false
-    if ($failures) {
-        Write-Host "SELFTEST FAILED"
-        exit 1
+
+    if (-not $NoZip) {
+        $zip = "$stage.zip"
+        if (Test-Path $zip) { Remove-Item $zip -Force -Confirm:$false }
+        Compress-Archive -Path $stage -DestinationPath $zip
+        Write-Host "Artifact: $zip"
     }
-    Write-Host "Selftest passed. Artifact: $exe"
+    Write-Host "Portable folder: $stage"
 } finally {
     Pop-Location
 }

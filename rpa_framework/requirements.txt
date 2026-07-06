@@ -3,6 +3,7 @@ PyQt6>=6.5
 numpy>=1.24
 pytesseract>=0.3.10
 mss>=9.0
+onnxruntime>=1.17
 pywinauto>=0.6.8 ; sys_platform == "win32"
 pywin32>=306 ; sys_platform == "win32"
 comtypes>=1.2 ; sys_platform == "win32"

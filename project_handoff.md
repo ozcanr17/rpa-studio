@@ -691,16 +691,74 @@ sikulix-2014.readthedocs.io and noting findText/Finder were missing:
   all three observe event types + the .sikuli importer + multi-monitor) all
   green. Shipped as branch session-13-sikuli-parity, PR #2.
 
-**Immediate next action:** merge PR #2 on GitHub (session 13). Git workflow:
+**Session 14 (2026-07-06): offline AI vision + portable-folder packaging.**
+Two architecture changes requested together (Roles A + C):
+- AI vision: new core/vision/ui_detector.py with UIDetector + Detection.
+  onnxruntime is imported lazily inside UIDetector.__init__ (import-anywhere
+  preserved); YOLO v5 (N x 5+nc, objectness*cls) and v8 (4+nc x N, transposed)
+  outputs are both parsed; letterbox preprocessing (114 pad, BGR->RGB CHW
+  float32/255) with exact coordinate unmapping; NMS via cv2.dnn.NMSBoxes; class
+  labels resolve from ONNX metadata "names" -> a sibling <model>.labels file ->
+  DEFAULT_LABELS (15 UI classes); kind synonyms via normalize_kind
+  (input/edit/textbox->field, dropdown/select->combobox, ...).
+- Wiring: find_ui/find_ui_regions take an optional detector and fall back to
+  the session-8 contour heuristic when the detector is absent, errors out, or
+  returns nothing (detect_ui swallows detector exceptions). sikuli.findUI uses
+  runtime_paths.configured_detector() - a cached factory that scans
+  vendor/models (source) or models/ (bundle) for the first *.onnx and returns
+  None when there is no model, so behavior without a model is unchanged.
+  Target gained a fourth anchor "ui" (after element/image/text) that only
+  activates when a detector exists: findUI(role, text) on the Target scope.
+  New exports: core Detection/UIDetector/detect_ui/find_ui/find_ui_regions,
+  packaging configured_detector/models_dir/ui_model_path.
+- Packaging is folder-first now (onefile REQUIREMENT DROPPED; --onefile kept
+  as legacy opt-in): build.py defaults to --standalone only, main() flips to
+  opt-in parsing, and after a folder build copy_native_libs() copies
+  onnxruntime/capi shared libs (.dll/.so*/.pyd) into the dist folder because
+  Nuitka data options skip DLLs (verified: onnxruntime.dll +
+  onnxruntime_providers_shared.dll + pyd land correctly). nuitka_flags adds
+  onnxruntime to OPTIONAL_PACKAGES (+ --include-package-data via new
+  PACKAGE_DATA) and vendor/models to VENDOR_DATA (raw dir). Scripts stage
+  portable folders: build_windows.ps1 -> dist\rpa-studio-windows(+.zip) or
+  -Headless -> dist\rpa-run-windows (also FIXED its selftest gate: the old
+  pattern "^fail" never matched "[fail]" lines); build_linux.sh ->
+  dist/rpa-studio-linux(+.tar.gz) or headless -> dist/rpa-run-linux(+.tar.gz),
+  both via `mv app.dist`/`runner_app.dist`. IDE menu relabeled "Build
+  Standalone App". requirements(.txt/-linux.txt) add onnxruntime>=1.17; both
+  venvs have it installed now. Selftest gained a tolerant vision_ai probe
+  (reports onnxruntime presence + model path + labels, never fails when no
+  model is bundled). vendor/models/ ships ui_detect.labels (default classes);
+  drop ui_detect.onnx next to it to enable AI vision.
+- Docs: TUTORIAL.md/KILAVUZ.md section 5.11 rewritten (AI engine + heuristic
+  fallback, enabling instructions, direct UIDetector API, thread/process
+  notes), section 9 retitled to portable folders, troubleshooting + layout
+  rows updated; BUILDING.md artifact matrix + vendor/models + native-lib
+  copy notes; README landing page now sells the three-layer locator story and
+  folder deployment; root TUTORIAL.md/KILAVUZ.md copies re-synced (docs_path
+  prefers bundle root in source runs). rpa_framework/CLAUDE.md status/layout
+  updated.
+- Verified: constraint checker 49 files/0 problems; 28-check functional suite
+  with a REAL generated ONNX model through real onnxruntime inference
+  (letterbox unmapping asserted numerically, NMS dedupe, metadata + .labels
+  label sources, kind aliases, min_score, gray frames, broken-detector
+  fallback, configured_detector caching, Target gate); build --dry-run shows
+  the exact flag set (GUI + headless); ps1 parses clean, sh -n clean; full
+  source selftest all [ok] including vision_ai.
+
+**Immediate next action:** merge the session-14 PR, then rebuild both
+platform artifacts with the new scripts and attach the folder packages to the
+next releases. No trained UI-detection model is bundled yet - acquiring or
+training one (YOLO format, exported to ONNX, classes matching
+vendor/models/ui_detect.labels) is the top Role A follow-up. Git workflow:
 direct pushes to main and merging unreviewed PRs both require explicit user
 approval in this environment; push feature branches and open PRs with gh. The
 remaining backlog is Section 5 (Role A known-gaps work and Role B polish,
 e.g. welcome tab, multi-monitor capture coordinates).
 
 Standing flags: **builds must use `.venv-build` (python.org 3.14), never
-`.venv`** (Store Python cannot link); run `--selftest` on the exe after every
-rebuild; check build logs for "Included data file" lines when touching
-bundled data.
+`.venv`** (Store Python cannot link); run `--selftest` on the built app after
+every rebuild (the exe now lives inside dist\rpa-studio-windows\); check build
+logs for "Included data file" lines when touching bundled data.
 
 ---
 

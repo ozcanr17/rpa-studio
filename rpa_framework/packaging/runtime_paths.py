@@ -37,6 +37,45 @@ def logo_path():
     return _resource_or_vendor("logo2.png", os.path.isfile)
 
 
+_DETECTOR_STATE = {"detector": None, "tried": False}
+
+
+def models_dir():
+    return _resource_or_vendor("models", os.path.isdir)
+
+
+def ui_model_path():
+    folder = models_dir()
+    if not folder:
+        return None
+    try:
+        for name in sorted(os.listdir(folder)):
+            if name.lower().endswith(".onnx"):
+                return os.path.join(folder, name)
+    except Exception:
+        pass
+    return None
+
+
+def _build_detector(path, **kwargs):
+    if not path:
+        return None
+    from ..core.vision.ui_detector import UIDetector
+    try:
+        return UIDetector(path, **kwargs)
+    except Exception:
+        return None
+
+
+def configured_detector(model_path=None, **kwargs):
+    if model_path is None and not kwargs:
+        if not _DETECTOR_STATE["tried"]:
+            _DETECTOR_STATE["detector"] = _build_detector(ui_model_path())
+            _DETECTOR_STATE["tried"] = True
+        return _DETECTOR_STATE["detector"]
+    return _build_detector(model_path or ui_model_path(), **kwargs)
+
+
 def configured_ocr(**kwargs):
     from ..core.vision.ocr_engine import OCREngine
     kwargs.setdefault("tesseract_cmd", tesseract_cmd())

@@ -347,6 +347,56 @@ Erişilebilirlik ağacı olmayan Citrix, VDI veya video akışları için:
     findUI("button", text="Tamam")    Tamam düğmesine benzeyen Region listesi
     findUI("field"); findUI("any", region=Region(0,0,800,600))
 
+`findUI` iki motora sahiptir ve en iyisini otomatik seçer:
+
+1. **Yapay zeka görüsü (anlamsal).** Bir UI tespit modeli paketlenmişse
+   (aşağıya bakın), çevrimdışı bir ONNX sinir ağı ekran görüntüsünü tarar ve
+   öğeleri *anlamına* göre döndürür - "bu bir düğme", "bu bir giriş alanı" -
+   pikseller, tema veya DPI değişmiş olsa bile. Hiçbir veri makineden çıkmaz:
+   çıkarım, paketlenmiş onnxruntime ile yerel CPU'da çalışır.
+2. **Şekil sezgileri (yedek).** Model yoksa klasik kontur tabanlı tespit
+   (kenarlar + dikdörtgen süzme) aynen eskisi gibi kullanılır.
+
+Varsayılan model etiketleriyle desteklenen türler: `button`, `field`,
+`checkbox`, `combobox`, `radio`, `link`, `icon`, `image`, `menu`, `slider`,
+`switch`, `tab`, `text`, `scrollbar`, `window` ve `any`. Yaygın eş anlamlılar
+kabul edilir (`input`/`edit`/`textbox` -> `field`, `dropdown`/`select` ->
+`combobox` vb.).
+
+`Target` da dördüncü bir kendini onaran çapa kazandı: `element`, `image` ve
+`text` sırayla başarısız olursa, yapay zeka dedektöründen sınıfı Target'ın
+`role` değeriyle eşleşen bir öğe istenir (`text` verilmişse onunla süzülür).
+`ui` çapası yalnızca bir model paketliyken devreye girer; modelsiz davranış
+değişmez:
+
+    Target(role="button", text="Kaydet", window="Editor").click()
+
+#### Yapay zeka görüsünü etkinleştirme
+
+YOLO biçiminde bir ONNX modelini `vendor/models/` (kaynak ağacı) veya
+`models/` (taşınabilir derleme klasörü) içine koyun, örneğin
+`models/ui_detect.onnx`. Sınıf adları önce model üstverisinden, yoksa yanındaki
+`ui_detect.labels` dosyasından (her satıra bir sınıf adı), o da yoksa yukarıdaki
+varsayılan listeden okunur. Her şey tamamen çevrimdışı çalışır - model dosyası
+uygulama klasörünün içinde taşınır.
+
+#### Doğrudan API (kütüphane kullanımı)
+
+    from rpa_framework.core import UIDetector, find_ui
+    from rpa_framework.packaging import configured_detector
+
+    detector = configured_detector()          paketlenmiş model, yoksa None
+    detector = UIDetector("modelim.onnx")     açık model dosyası
+    hits = detector.detect(frame, kind="button", min_score=0.5)
+    hits[0].rect; hits[0].label; hits[0].score
+
+    boxes = find_ui(frame, "field", detector=detector)   Rect listesi, sezgisel yedekli
+
+Dedektör ilk kullanımda tembel yüklenir ve oturum boyunca önbelleğe alınır.
+Betikler her zaman çalıştırıcı alt sürecinde koşar, bu yüzden çıkarım IDE'yi
+asla kilitlemez; kütüphaneyi kendi arayüzünüze gömüyorsanız `detect`
+çağrısını bir işçi iş parçacığından yapın.
+
 ### 5.12 İletişim kutuları ve kullanıcı girişi
 
     popup("bitti!")                   Tamam düğmeli mesaj kutusu
@@ -470,23 +520,32 @@ Linux ayrıntıları (RHEL/CentOS 8, bağımlılıklar, başsız Xvfb) LINUX.md'
 
 ---
 
-## 9. Bağımsız ikilileri derleme
+## 9. Taşınabilir klasörleri derleme
 
-    scripts\build_windows.ps1               Windows: dist\RPAStudio.exe (+ selftest)
-    scripts/build_linux.sh                  Linux GUI: dist/rpa-studio-linux.tar.gz
-    scripts/build_linux.sh headless         Linux çalıştırıcı: dist/rpa-run.bin
+Her ürün bağımsız, taşınabilir bir KLASÖRDÜR: temiz, kapalı ağdaki (air-gap)
+bir Windows veya Linux makinesine kopyalayın, hiçbir kurulum olmadan çalışır -
+Python yok, OpenCV yok, Tesseract yok, onnxruntime yok. Tüm paylaşılan
+kütüphaneler (`.dll` / `.so`) klasörün içinde taşınır.
+
+    scripts\build_windows.ps1               Windows IDE: dist\rpa-studio-windows\ (+ zip, + selftest)
+    scripts\build_windows.ps1 -Headless     Windows çalıştırıcı: dist\rpa-run-windows\
+    scripts/build_linux.sh                  Linux IDE: dist/rpa-studio-linux/ (+ tar.gz)
+    scripts/build_linux.sh headless         Linux çalıştırıcı: dist/rpa-run-linux/ (+ tar.gz)
 
 Veya paketleyiciyi doğrudan çağırın:
 
-    python -m rpa_framework.packaging.build             # GUI onefile
+    python -m rpa_framework.packaging.build             # GUI bağımsız klasör
     python -m rpa_framework.packaging.build --headless  # rpa-run, Qt yok
 
 Notlar: Nuitka çapraz derleme yapmaz (Windows'u Windows'ta, Linux'u Linux'ta
 derleyin) ve Microsoft Store Python'u desteklemez (python.org kurulumu
 kullanın). İlk derleme bir C derleyici indirir ve zaman alabilir. OCR gömmek
 için derlemeden önce `vendor/tesseract/` (ikili + DLL'ler) ve `vendor/tessdata/`
-(`.traineddata` dosyaları) klasörlerini `rpa_framework` yanına koyun; otomatik
-gömülür ve bağlanır. Bayraklar: `--dry-run`, `--no-onefile`, `--console`. Tam
+(`.traineddata` dosyaları) klasörlerini `rpa_framework` yanına koyun. Yapay
+zeka görüsünü gömmek için `.onnx` UI tespit modelini (ve isteğe bağlı
+`.labels` dosyasını) `vendor/models/` içine koyun. İkisi de otomatik gömülür
+ve bağlanır; onnxruntime derleme ortamında kuruluysa klasöre dahil edilir.
+Bayraklar: `--dry-run`, `--console`, `--onefile` (eski tek dosya derleme). Tam
 matris BUILDING.md'dedir.
 
 ---
@@ -506,9 +565,11 @@ matris BUILDING.md'dedir.
   (kaynak çalıştırmaları) veya exe onsuz derlenmiş.
 - **Çoklu monitörde tıklamalar tuhaf yere iniyor** - hedef uygulamayı şimdilik
   birincil monitörde tutun veya `Screen(1)` ile sınırlayın.
+- **findUI bariz düğmeleri kaçırıyor** - paketlenmiş yapay zeka modeli yok,
+  şekil sezgisi çalışıyor; `models/` altına bir model ekleyin (bkz. 5.11).
 - **Başka her şey** - `RPAStudio.exe --selftest report.txt` çalıştırın: arka
-  ucu, inceleyiciyi, yakalamayı, OCR'yi, belgeleri ve örnekleri sınar ve her
-  birini ok/fail olarak işaretler.
+  ucu, inceleyiciyi, yakalamayı, OCR'yi, yapay zeka görüsünü, belgeleri ve
+  örnekleri sınar ve her birini ok/fail olarak işaretler.
 
 ---
 
@@ -516,7 +577,7 @@ matris BUILDING.md'dedir.
 
     rpa_framework/
       core/os_facade/   fare, klavye, ekran yakalama, pencereler (OS başına)
-      core/vision/      SIFT/ORB resim bulma, OCR, VDI denetim tespiti
+      core/vision/      SIFT/ORB resim bulma, OCR, yapay zeka + sezgisel UI tespiti
       core/inspector/   erişilebilirlik ağacı (UIA / AT-SPI) + casus arka planı
       compat/sikuli.py  SikuliX uyumlu betik API'si
       ide/              düzenleyici, paneller, yakalama araçları, güvenli çalıştırıcı
