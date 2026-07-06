@@ -100,7 +100,11 @@ dependencies are needed on that machine.
 
 The framework degrades gracefully: a missing piece only disables its own
 feature and raises a clear error, never an import crash. In the zero-install
-binaries everything except the OS session below is already embedded.
+folder builds everything except the OS session below is already embedded -
+including Qt's X client libraries (the xcb family, `libxkbcommon`, and the
+dlopen'ed `libxcb-cursor.so.0` that Qt 6.5+ requires). Only glibc, the display
+server itself, and GPU drivers come from the OS, because bundling those breaks
+any machine whose hardware differs from the build box.
 
 - **A graphical session (X11 or Wayland).** GUI automation drives a real
   desktop, so the process must reach a display. On a headless server use a
@@ -188,29 +192,42 @@ double-click:
 
 Then match the error below.
 
-- **"could not load the Qt platform plugin xcb"** - the target is missing the
-  X/Qt runtime libraries. On RHEL/CentOS 8:
+- **"could not load the Qt platform plugin xcb" / "From 6.5.0, xcb-cursor0 or
+  libxcb-cursor0 is needed"** - Qt 6.5+ loads `libxcb-cursor.so.0` at run time
+  (dlopen), so a dependency scan cannot see it, and older folder builds
+  (linux-v1.0.0 and earlier) did not bundle it. Current builds are
+  self-contained: the build sweeps every externally-resolved `.so` (except
+  glibc and GPU drivers, which must always come from the OS) plus the whole
+  dlopen'ed xcb family into the folder, and `run.sh` exports
+  `LD_LIBRARY_PATH` so they are found. Fix path:
 
-        sudo dnf install -y libxkbcommon libxkbcommon-x11 xcb-util xcb-util-image \
-          xcb-util-keysyms xcb-util-renderutil xcb-util-wm xcb-util-cursor \
-          libX11 libXext libXrender fontconfig freetype mesa-libGL
+  1. Rebuild with the current `scripts/build_linux.sh` and deploy the new
+     folder. **Always start the app through `./run.sh`**, not the raw
+     `RPAStudio.bin`.
+  2. On the target, run `sh diagnose.sh` inside the folder: it prints every
+     shared library that still fails to resolve (an empty list means the
+     bundle is complete) plus the session type.
+  3. If `diagnose.sh` is clean but the plugin still fails, run
+     `QT_DEBUG_PLUGINS=1 ./run.sh` for Qt's own loader trace.
 
-  (Debian/Ubuntu: `libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0
-  libxcb-keysyms1 libxcb-render-util0 libgl1`). To see exactly which library is
-  missing: `QT_DEBUG_PLUGINS=1 ./dist/RPAStudio.bin`.
+  The build machine must have the xcb family installed so it can be copied
+  into the bundle (RHEL/CentOS 8:
+  `sudo dnf install -y xcb-util-cursor xcb-util xcb-util-image xcb-util-keysyms
+  xcb-util-renderutil xcb-util-wm libxkbcommon-x11`; Debian/Ubuntu:
+  `sudo apt install libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4
+  libxcb-image0 libxcb-keysyms1 libxcb-render-util0`). The build prints
+  `linux-libs: MISSING on build machine: ...` if something cannot be bundled -
+  treat that as a build failure for air-gapped targets. Installing those same
+  packages directly on the target also works, but is only a stopgap for old
+  builds; the goal is that the folder needs nothing.
 
 - **Silent exit / "cannot create temporary directory" / "permission denied"** -
-  the onefile binary unpacks to a temp folder, and hardened systems mount /tmp
-  with `noexec`. The build now unpacks to `~/.cache/RPAStudio` instead. If you
-  still hit this, point it somewhere executable at run time:
+  only applies to legacy onefile binaries, which unpack to a temp folder that
+  hardened systems mount `noexec`. Current builds are standalone folders with
+  no extraction step at all, so this cannot happen; if you are stuck with an
+  old onefile artifact, point the unpack somewhere executable:
 
         NUITKA_ONEFILE_TEMPDIR=$HOME/.rpa-run ./dist/RPAStudio.bin
-
-  or, most robust for closed systems, build a folder instead of onefile (no
-  extraction at all):
-
-        python -m rpa_framework.packaging.build --no-onefile
-        ./dist/app.dist/RPAStudio.bin
 
 - **"qt.qpa.xcb: could not connect to display" / runs over SSH** - there is no
   graphical session. Run it on the actual desktop, forward X (`ssh -X`), or use
@@ -235,8 +252,9 @@ sistem kisitlari nedeniyle ASCII olarak yazilmistir.
   Python ve OpenCV'sini iceren ikili. `java -jar sikulix.jar -r test.sikuli`
   komutunun dogrudan karsiligi: `./rpa-run test.sikuli`. Hedef makinede Python,
   Java veya pip gerekmez. Kapali sistemler icin onerilir.
-- **B. Kurulumsuz arayuz (RPA Studio)**: gorsel IDE'nin tek dosyalik ikilisi
-  (`RPAStudio.bin`). Grafik masaustu oturumu gerektirir.
+- **B. Kurulumsuz arayuz (RPA Studio)**: gorsel IDE'nin tasinabilir klasoru
+  (`rpa-studio-linux/`, icinde `RPAStudio.bin`). Grafik masaustu oturumu
+  gerektirir; `./run.sh` ile baslatin (gomulu kutuphaneleri yola ekler).
 - **C. Kutuphane olarak**: Python 3.8+ olan makinede `import rpa_framework`
   veya `python -m rpa_framework test.sikuli`.
 
@@ -275,6 +293,12 @@ klasorlerini ekleyin.
 - **Gorsel eslesme:** OpenCV + numpy (ikililerde gomuludur); ayrica `mesa-libGL`.
 - **OCR:** `tesseract` ikilisi ve dil verisi (kurulu ya da `vendor/` ile gomulu).
 Hepsi gerekmez: yalnizca yerel erisilebilirlik ile OpenCV'siz otomasyon mumkundur.
+Guncel klasor derlemeleri Qt'nin X istemci kutuphanelerini de (xcb ailesi,
+`libxkbcommon`, Qt 6.5+'in calisma aninda actigi `libxcb-cursor.so.0`) icine
+gomer; hedefe hicbir paket kurulmaz. Uygulamayi `./run.sh` ile baslatin;
+"could not load the Qt platform plugin xcb" gorurseniz klasordeki
+`sh diagnose.sh` cozulemeyen kutuphaneleri listeler (bos liste = paket tam).
+Yalnizca glibc, ekran sunucusu ve GPU suruculeri isletim sisteminden gelir.
 
 ### 5. Cevrimdisi / kurulumsuz kutuphane (kapali RHEL/CentOS 8)
 Internetli, hedefle ayni makinede:

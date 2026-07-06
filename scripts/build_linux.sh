@@ -40,12 +40,47 @@ fi
 rm -rf "$stage"
 mv "$built" "$stage"
 cp "$root/rpa_framework/LINUX.md" "$stage/LINUX.md"
+
+# run.sh: launch with the bundled shared libraries visible to the loader, so
+# dlopen'ed libs (Qt >= 6.5 needs libxcb-cursor.so.0 at runtime) resolve from
+# the folder even on a machine that has none of them installed.
 cat > "$stage/run.sh" << EOF
 #!/bin/sh
-cd "\$(dirname "\$0")"
-exec ./$launcher "\$@"
+dir="\$(cd "\$(dirname "\$0")" && pwd)"
+qtlib="\$(find "\$dir" -name 'libQt6XcbQpa.so*' -print 2>/dev/null | head -n 1)"
+[ -n "\$qtlib" ] && qtlib="\$(dirname "\$qtlib")"
+LD_LIBRARY_PATH="\$dir\${qtlib:+:\$qtlib}\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH
+if [ -z "\$DISPLAY" ] && [ -n "\$WAYLAND_DISPLAY" ] && [ -z "\$QT_QPA_PLATFORM" ]; then
+    QT_QPA_PLATFORM=wayland
+    export QT_QPA_PLATFORM
+fi
+exec "\$dir/$launcher" "\$@"
 EOF
-chmod +x "$stage/run.sh" "$stage/$launcher" 2>/dev/null || true
+
+# diagnose.sh: ships with the app; run it on the target machine to list any
+# shared library that still fails to resolve, plus display/session info.
+cat > "$stage/diagnose.sh" << EOF
+#!/bin/sh
+dir="\$(cd "\$(dirname "\$0")" && pwd)"
+echo "== session =="
+echo "DISPLAY=\$DISPLAY WAYLAND_DISPLAY=\$WAYLAND_DISPLAY XDG_SESSION_TYPE=\$XDG_SESSION_TYPE"
+ldd --version 2>/dev/null | head -n 1
+echo "== unresolved shared libraries (empty list = all good) =="
+qtlib="\$(find "\$dir" -name 'libQt6XcbQpa.so*' -print 2>/dev/null | head -n 1)"
+[ -n "\$qtlib" ] && qtlib="\$(dirname "\$qtlib")"
+export LD_LIBRARY_PATH="\$dir\${qtlib:+:\$qtlib}\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+find "\$dir" \( -name '*.so*' -o -name '*.bin' \) 2>/dev/null | while read -r f; do
+    ldd "\$f" 2>/dev/null | grep "not found" | sed "s|^[[:space:]]*|\${f#\$dir/}: |"
+done | sort -u
+echo "== done =="
+EOF
+chmod +x "$stage/run.sh" "$stage/diagnose.sh" "$stage/$launcher" 2>/dev/null || true
+
+# Informational check on the build machine; the authoritative run is
+# `sh diagnose.sh` on the deployment target.
+echo "== bundle check (unresolved libraries on THIS machine) =="
+sh "$stage/diagnose.sh" | sed -n '/unresolved/,$p'
 
 tar czf "$stage.tar.gz" -C "$root/dist" "$(basename "$stage")"
 echo "Portable folder: $stage"
