@@ -96,8 +96,8 @@ kaydırıcısını ayarlayın, resmi canlı denemek için "Ekranda Bul"a basın 
 ### Element Spy (alt, Çıktı ile sekmeli)
 "Start watching"e basıp fareyi hareket ettirin: imlecin altındaki gerçek arayüz
 öğesi (rol, ad, id, sınıf, sınırlayıcı kutu, pid) OS erişilebilirlik ağacından
-canlı gösterilir. Öğenin konumlandırıcısını anında eklemek için üzerine gelip
-**sağ tıklayın**. Eylem seçici hazır bir eylem satırı da ekler (`.click()`,
+canlı gösterilir. Öğenin konumlandırıcısını anında eklemek için üzerindeyken
+**F8** (veya **Insert**) tuşuna basın. Eylem seçici hazır bir eylem satırı da ekler (`.click()`,
 `.type("..")`, `.check()`, `.select("..")`...). **Scrape Active Window** hedef
 uygulamayı odaklamanız için 3 saniye bekler, sonra bulduğu her öğe için
 adlandırılmış bir değişken ekler (temiz küçük harfli adlar, Türkçe karakterler
@@ -371,13 +371,30 @@ değişmez:
 
     Target(role="button", text="Kaydet", window="Editor").click()
 
-#### Yapay zeka görüsünü etkinleştirme
+#### Paketle gelen model
 
-YOLO biçiminde bir ONNX modelini `vendor/models/` (kaynak ağacı) veya
-`models/` (taşınabilir derleme klasörü) içine koyun, örneğin
-`models/ui_detect.onnx`. Sınıf adları önce model üstverisinden, yoksa yanındaki
-`ui_detect.labels` dosyasından (her satıra bir sınıf adı), o da yoksa yukarıdaki
-varsayılan listeden okunur. Her şey tamamen çevrimdışı çalışır - model dosyası
+Kutudan bir model çıkar: Microsoft **OmniParser icon-detect** (12 MB, YOLO
+tabanlı, AGPL-3.0 lisanslı ağırlıklar - bkz. `models/`), masaüstü ve web ekran
+görüntülerinde etkileşimli öğeleri bulmak için özel eğitilmiştir. Tek sınıf
+(`element`) sunar; bu modelle her `kind` her şeyle eşleşir, daraltmayı
+`text=` ile yaparsınız:
+
+    findUI("any")                      tüm etkileşimli öğeler
+    findUI("button", text="Kaydet")    OCR metni Kaydet içeren öğeler
+
+İpuçları: aramayı daraltın (`findUI("any", region=birPencere)`) - model
+640x640 küçültme görür, bu yüzden pencere bölgesi çoklu monitör masaüstünden
+çok daha iyi sonuç verir. Eşikleri kod değiştirmeden `models/ui_detect.json`
+dosyasından ayarlayın (`min_score`, `iou`).
+
+#### Kendi modelinizi takma
+
+YOLO biçiminde herhangi bir ONNX modelini `vendor/models/` (kaynak ağacı) veya
+`models/` (taşınabilir derleme klasörü) içine koyun. Sınıf adları önce model
+üstverisinden, yoksa yanındaki `<model>.labels` dosyasından (her satıra bir
+sınıf adı), o da yoksa yukarıdaki varsayılan listeden okunur. Çok sınıflı bir
+model (button/field/checkbox/...) `kind` süzgecini ve `Target` rol yedeğini
+tam anlamsal yapar. Her şey tamamen çevrimdışı çalışır - model dosyası
 uygulama klasörünün içinde taşınır.
 
 #### Doğrudan API (kütüphane kullanımı)
@@ -565,8 +582,10 @@ matris BUILDING.md'dedir.
   (kaynak çalıştırmaları) veya exe onsuz derlenmiş.
 - **Çoklu monitörde tıklamalar tuhaf yere iniyor** - hedef uygulamayı şimdilik
   birincil monitörde tutun veya `Screen(1)` ile sınırlayın.
-- **findUI bariz düğmeleri kaçırıyor** - paketlenmiş yapay zeka modeli yok,
-  şekil sezgisi çalışıyor; `models/` altına bir model ekleyin (bkz. 5.11).
+- **findUI öğe kaçırıyor ya da çok fazla buluyor** - aramayı bir pencere
+  bölgesine daraltın ve `models/ui_detect.json` dosyasını ayarlayın
+  (`min_score` düşürün = daha çok, yükseltin = daha az); `models/` klasörü
+  boşsa yapay zeka yerine şekil sezgisi çalışıyordur (bkz. 5.11).
 - **Linux: "could not load the Qt platform plugin xcb" / "xcb-cursor0 is
   needed"** - uygulamayı ham `.bin` yerine `./run.sh` ile başlatın; klasör
   kendinden-tam paketlemeden eskiyse güncel derleme betiğiyle yeniden

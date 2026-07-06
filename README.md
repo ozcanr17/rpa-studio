@@ -47,7 +47,7 @@ Most automation tools gamble everything on a single locator strategy. When it br
 
 - **🖥️ Truly Cross-Platform** — Native Windows (UIA) and Linux (AT-SPI) targeting from the same script.
 - **🔌 SikuliX-Compatible** — Drop-in familiar syntax: `click()`, `type()`, `find()`, `wait()`, `findText()`, `exists()`, `Pattern`, `Region`.
-- **🔎 Element Spy & Window Spy** — Hover any control, **right-click**, and RPA Studio writes window-locked, resolution-proof locator code for you.
+- **🔎 Element Spy & Window Spy** — Hover any control, press **F8**, and RPA Studio writes window-locked, resolution-proof locator code for you. Works on Windows and Linux.
 - **📖 Built-in OCR Engine** — Embedded Tesseract (`eng`, `eng_best`, `tur`, `dejavu_sans`) for content validation and text-anchor clicks — no external install. Search on-screen text with `findText`, `findWord`, `findLine`, `findWords`, and the `OCR` class.
 - **👀 Event Observation** — `onAppear` / `onVanish` / `onChange` handlers with blocking or background `observe()`, plus `Finder` for searching inside saved images.
 - **🤖 Offline AI Vision** — Drop a YOLO `.onnx` UI-detection model into `models/` and `findUI("button")` finds elements by *semantics*, not pixels — air-gapped, no cloud, no install.

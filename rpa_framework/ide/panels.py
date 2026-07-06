@@ -25,7 +25,11 @@ _TRANSLIT = {
 }
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp")
-VK_RBUTTON = 0x02
+VK_F8 = 0x77
+VK_INSERT = 0x2D
+_INSERT_VKS = (VK_F8, VK_INSERT)
+_X_KEY_NAMES = ("F8", "Insert")
+_X_KEY_STATE = {"display": None, "codes": ()}
 
 
 def slugify(text, fallback="item", limit=3):
@@ -76,12 +80,31 @@ def sikuli_main_script(folder):
     return os.path.join(folder, scripts[0]) if scripts else None
 
 
-def right_pressed():
-    if os.name != "nt":
+def _x_key_handle():
+    if _X_KEY_STATE["display"] is None:
+        try:
+            from Xlib import XK, display
+            handle = display.Display()
+            _X_KEY_STATE["codes"] = tuple(handle.keysym_to_keycode(XK.string_to_keysym(name)) for name in _X_KEY_NAMES)
+            _X_KEY_STATE["display"] = handle
+        except Exception:
+            _X_KEY_STATE["display"] = False
+    return _X_KEY_STATE["display"], _X_KEY_STATE["codes"]
+
+
+def insert_pressed():
+    if os.name == "nt":
+        try:
+            import win32api
+            return any(win32api.GetAsyncKeyState(code) & 0x8000 for code in _INSERT_VKS)
+        except Exception:
+            return False
+    handle, codes = _x_key_handle()
+    if not handle:
         return False
     try:
-        import win32api
-        return bool(win32api.GetAsyncKeyState(VK_RBUTTON) & 0x8000)
+        keymap = handle.query_keymap()
+        return any(code and keymap[code >> 3] & (1 << (code & 7)) for code in codes)
     except Exception:
         return False
 
@@ -529,7 +552,7 @@ def build_panels(qt):
             right_column.setSpacing(4)
             columns.addLayout(layout, 1)
             columns.addLayout(right_column, 1)
-            steps = QtWidgets.QLabel("Start watching, hover any control in any app, then RIGHT-CLICK it (or press Insert) to drop it into the script as a variable.", self)
+            steps = QtWidgets.QLabel("Start watching, hover any control in any app, then press F8 (or Insert) to drop it into the script as a variable.", self)
             steps.setWordWrap(True)
             steps.setStyleSheet("color: {};".format(COLORS["dim"]))
             layout.addWidget(steps)
@@ -560,7 +583,7 @@ def build_panels(qt):
             self._action.currentIndexChanged.connect(self._refresh_preview)
             action_row.addWidget(self._action, 1)
             layout.addLayout(action_row)
-            self._insert = QtWidgets.QPushButton("Insert element + action  (or right-click)", self)
+            self._insert = QtWidgets.QPushButton("Insert element + action  (F8 / Insert)", self)
             self._insert.setProperty("primary", True)
             self._insert.setEnabled(False)
             self._insert.clicked.connect(self._capture_element)
@@ -611,7 +634,7 @@ def build_panels(qt):
             self._daemon = daemon
             daemon.start()
             self._timer.start()
-            self._toggle.setText("Watching - hover a control, right-click")
+            self._toggle.setText("Watching - hover a control, press F8")
             self._preview.setText("Watching. Hover any control in any app.")
 
         def _failed(self, exc):
@@ -620,7 +643,7 @@ def build_panels(qt):
             self._preview.setText("Inspector unavailable: {}".format(exc))
 
         def _drain(self):
-            hot = right_pressed()
+            hot = insert_pressed()
             if hot and not self._hot_prev and self._element:
                 self._capture_element()
             self._hot_prev = hot

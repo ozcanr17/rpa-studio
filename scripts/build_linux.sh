@@ -19,10 +19,18 @@ fi
 if ! "$python" -c "import nuitka" 2>/dev/null; then
     echo "nuitka is not installed for $python"
     echo "Prepare a build venv first:"
-    echo "  python3 -m venv build && . build/bin/activate"
+    echo "  sudo dnf install -y python3-gobject at-spi2-core   # Element Spy support"
+    echo "  python3 -m venv --system-site-packages build && . build/bin/activate"
     echo "  pip install -r rpa_framework/requirements-linux.txt nuitka"
     echo "  pip install -r rpa_framework/requirements-gui.txt   # GUI build only"
     exit 1
+fi
+
+if ! "$python" -c "import gi" 2>/dev/null; then
+    echo "NOTE: gi (PyGObject) is not importable in the build venv, so Element Spy"
+    echo "and findElement will be missing from this build. To include them:"
+    echo "  sudo dnf install -y python3-gobject at-spi2-core"
+    echo "  recreate the venv with: python3 -m venv --system-site-packages build"
 fi
 
 if [ "$1" = "headless" ]; then

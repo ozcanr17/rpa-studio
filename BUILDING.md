@@ -45,9 +45,16 @@ command), `-Headless` (build the `rpa-run.exe` folder instead of the IDE),
 One-time setup:
 
     sudo dnf install -y patchelf gcc
-    python3 -m venv build && . build/bin/activate
+    sudo dnf install -y python3-gobject at-spi2-core   # compiles Element Spy in
+    python3 -m venv --system-site-packages build && . build/bin/activate
     pip install -r rpa_framework/requirements-linux.txt nuitka
     pip install -r rpa_framework/requirements-gui.txt   # GUI build only
+
+`--system-site-packages` matters: PyGObject (`gi`) comes from the distro, and
+Nuitka can only compile the AT-SPI stack (Element Spy, findElement) into the
+folder when the build venv can import it. The build script warns if `gi` is
+not importable. The xcb family must also be present on the build machine so
+it can be bundled (see LINUX.md).
 
 Build:
 
@@ -84,9 +91,13 @@ automatically:
 
 - `vendor/tesseract/` - portable Tesseract binary + DLLs (enables OCR)
 - `vendor/tessdata/`  - language data (`eng`, `tur`, ...)
-- `vendor/models/`    - AI vision: a YOLO-format `.onnx` UI detection model
-  (e.g. `ui_detect.onnx`) plus an optional `<model>.labels` class list; enables
-  semantic `findUI` and the `ui` anchor fallback fully offline
+- `vendor/models/`    - AI vision: ships with Microsoft OmniParser icon-detect
+  (`ui_detect.onnx`, 12 MB, single class) plus its `.labels` class list and
+  `.json` threshold tuning; enables semantic `findUI` and the `ui` anchor
+  fallback fully offline. NOTE: the OmniParser detector weights are
+  **AGPL-3.0** (YOLO-derived) - review that license before redistributing
+  builds commercially, or swap in your own model (any YOLO-format `.onnx`
+  dropped here is picked up automatically)
 - `vendor/icons/`, `vendor/logo2.png` - branding (already in the repo)
 
 onnxruntime is bundled automatically when it is installed in the build venv

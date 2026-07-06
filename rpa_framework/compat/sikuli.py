@@ -1933,7 +1933,10 @@ class Target:
         if not (self.role or self.text):
             return None
         from ..packaging.runtime_paths import configured_detector
-        if configured_detector() is None:
+        detector = configured_detector()
+        if detector is None:
+            return None
+        if not self.text and len(detector.labels) <= 1:
             return None
         hits = findUI(self.role or "any", self.text, self._scope())
         return hits[0].getCenter() if hits else None

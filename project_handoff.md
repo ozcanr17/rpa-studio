@@ -795,17 +795,50 @@ Windows; the actual rebuild must happen on Linux):
   GOTCHA found: ntpath.isabs("/usr/lib") is False on Python 3.13+ - the
   parser uses target.startswith("/") instead of os.path.isabs.
 
-**Immediate next action (USER, on the Linux box):** git pull the session-15
-branch (or main once merged), install the xcb family on the BUILD machine if
-absent (dnf: xcb-util-cursor xcb-util xcb-util-image xcb-util-keysyms
-xcb-util-renderutil xcb-util-wm libxkbcommon-x11), run
-`scripts/build_linux.sh`, confirm the "bundle check" section is empty and no
-"linux-libs: MISSING" lines appear, copy dist/rpa-studio-linux.tar.gz to the
-air-gapped target, extract, `./run.sh`. If anything still fails there,
-`sh diagnose.sh` output is the exact escalation artifact. Then publish
-release linux-v1.1.0 with the tar.gz. No trained UI-detection model is
-bundled yet - acquiring or training one (YOLO format, exported to ONNX,
-classes matching vendor/models/ui_detect.labels) is the top Role A follow-up.
+**Session 16 (2026-07-06): bundled AI model + cross-platform Element Spy.**
+- vendor/models/ui_detect.onnx: Microsoft OmniParser icon-detect
+  (onnx-community/OmniParser-icon_detect_640x640 fp32, 12.25 MB, input
+  1x3x640x640, output 1x5x8400, single class). Verified with REAL inference
+  on the live desktop: 33 correct detections on a 1920x1080 crop (browser
+  tabs, bookmark buttons, taskbar icons - preview image confirmed box
+  placement). Weights are AGPL-3.0 (YOLO-derived) - noted in BUILDING.md
+  with a swap-your-own-model path. ui_detect.labels = "element";
+  ui_detect.json sidecar = min_score 0.08 / iou 0.45 because OmniParser
+  operates at ~0.05-0.1 confidence, far below the 0.35 default.
+- UIDetector: reads <model>.json for min_score/iou defaults (explicit kwargs
+  still win); single-class models bypass the kind filter (every kind
+  matches, text= narrows). Target._by_ui gained a guard: with a
+  single-class detector and no text it returns None instead of healing to
+  the top-score element anywhere on screen (misclick prevention).
+- Element Spy trigger: panels.right_pressed (Windows-only, returned False
+  on Linux - THE reason the spy never inserted on Linux) replaced by
+  insert_pressed(): F8 or Insert, via GetAsyncKeyState (nt) or Xlib
+  query_keymap keycode bitmask (Linux; python-xlib already a dep). Panel
+  strings + README + both guides updated. The old UI label promised Insert
+  but the code never checked it.
+- Linux Element Spy zero-install: Nuitka gi plugin enabled when the build
+  venv imports gi (OPTIONAL_PLUGINS), libatspi.so.0 seeded into the lib
+  sweep (LINUX_GI_SO, gated on find_spec("gi")), build_linux.sh warns when
+  gi is missing; docs: dnf python3-gobject at-spi2-core + venv
+  --system-site-packages; the target needs only its desktop's own AT-SPI
+  bus (ships with GNOME/KDE) and toolkit-accessibility enabled.
+- examples/ai_elements.py added. Verified: vision suite extended to 34
+  checks (bundled model discovery, sidecar config, kwargs precedence,
+  single-class bypass, Target guard), linux bundle 20, constraints 50
+  files/0 problems, offscreen IDE smoke constructs SpyPanel with the new
+  F8/Insert button text, GUI+headless dry-runs.
+
+**Immediate next action (USER, on the Linux box):** git pull main, prepare
+the build machine (dnf: xcb-util-cursor xcb-util xcb-util-image
+xcb-util-keysyms xcb-util-renderutil xcb-util-wm libxkbcommon-x11
+python3-gobject at-spi2-core; venv recreated with --system-site-packages),
+run `scripts/build_linux.sh`, confirm the "bundle check" section is empty,
+no "linux-libs: MISSING" lines, and no gi warning, copy
+dist/rpa-studio-linux.tar.gz to the air-gapped target, extract, `./run.sh`.
+If anything still fails there, `sh diagnose.sh` output is the exact
+escalation artifact. Then publish release linux-v1.2.0 with the tar.gz.
+Training a multi-class UI model (button/field/checkbox...) to replace the
+single-class OmniParser weights remains the top Role A follow-up.
 Git workflow: direct pushes to main and merging unreviewed PRs both require
 explicit user approval in this environment; push feature branches and open
 PRs with gh. The remaining backlog is Section 5 (Role A known-gaps work and

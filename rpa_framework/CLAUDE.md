@@ -47,7 +47,14 @@ These apply to every Python file you add or edit. Violations are rejected.
   take an optional detector and fall back to the contour heuristic;
   sikuli.findUI wires runtime_paths.configured_detector (cached, returns None
   when no model), and Target gained a fourth "ui" anchor that only activates
-  when a model is bundled. Model files live in vendor/models/*.onnx.
+  when a model is bundled (and, for single-class models, only with text= -
+  role alone cannot discriminate). Model files live in vendor/models/*.onnx;
+  a <model>.json sidecar overrides min_score/iou defaults. BUNDLED MODEL:
+  OmniParser icon-detect (ui_detect.onnx, 12 MB, single class "element",
+  AGPL-3.0 weights - license note in BUILDING.md); single-class models bypass
+  the kind filter. Element Spy insert trigger is F8 or Insert
+  (panels.insert_pressed: GetAsyncKeyState on Windows, Xlib query_keymap on
+  Linux - right_pressed is gone).
 - PACKAGING NOW FOLDER-FIRST: build.py defaults to --standalone (no onefile);
   copy_native_libs() post-copies onnxruntime/capi shared libs Nuitka misses;
   scripts stage dist/rpa-studio-windows(+.zip), dist/rpa-run-windows,

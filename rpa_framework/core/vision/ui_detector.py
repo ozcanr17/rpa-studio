@@ -35,6 +35,8 @@ _KIND_ALIASES = {
     "menuitem": "menu",
 }
 _PAD_VALUE = 114
+_DEFAULT_MIN_SCORE = 0.35
+_DEFAULT_IOU = 0.45
 
 
 def normalize_kind(kind):
@@ -62,6 +64,17 @@ def _read_labels(model_path, session):
     except Exception:
         pass
     return DEFAULT_LABELS
+
+
+def _read_config(model_path):
+    path = os.path.splitext(str(model_path))[0] + ".json"
+    try:
+        import json
+        with open(path, "r", encoding="ascii", errors="replace") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
 
 
 def _nms(boxes, scores, floor, iou):
@@ -103,7 +116,7 @@ class Detection:
 
 
 class UIDetector:
-    def __init__(self, model_path, labels=None, min_score=0.35, iou=0.45, providers=None):
+    def __init__(self, model_path, labels=None, min_score=None, iou=None, providers=None):
         if cv2 is None or np is None:
             raise VisionError("opencv is required")
         if not model_path or not os.path.isfile(str(model_path)):
@@ -119,8 +132,9 @@ class UIDetector:
             self._session = onnxruntime.InferenceSession(str(model_path), sess_options=options, providers=wanted)
         except Exception as exc:
             raise VisionError("cannot load model: {}".format(exc))
-        self._min_score = float(min_score)
-        self._iou = float(iou)
+        config = _read_config(model_path)
+        self._min_score = float(config.get("min_score", _DEFAULT_MIN_SCORE) if min_score is None else min_score)
+        self._iou = float(config.get("iou", _DEFAULT_IOU) if iou is None else iou)
         spec = self._session.get_inputs()[0]
         self._input_name = spec.name
         shape = spec.shape
@@ -191,7 +205,7 @@ class UIDetector:
                 float(bw) / gain,
                 float(bh) / gain,
             ])
-        wanted = normalize_kind(kind)
+        wanted = normalize_kind(kind) if len(self._labels) > 1 else ""
         hits = []
         for index in _nms(boxes, best, floor, self._iou):
             label = self._label(ids[index])
