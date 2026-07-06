@@ -95,8 +95,8 @@ frame is drawn on the match), or insert a ready Pattern line.
 ### Element Spy (bottom, tabbed with Output)
 Press "Start watching" and move the mouse: the real UI element under the cursor
 (role, name, id, class, bounding box, pid) is shown live from the OS
-accessibility tree. **Right-click** while hovering to insert the element's
-locator instantly. An Action picker can add a ready action line
+accessibility tree. Press **F8** (or **Insert**) while hovering to insert the
+element's locator instantly. An Action picker can add a ready action line
 (`.click()`, `.type("..")`, `.check()`, `.select("..")`...). **Scrape Active
 Window** waits 3 seconds while you focus the target app, then inserts a named
 variable for every element it finds (clean lowercase names, Turkish characters
@@ -367,13 +367,30 @@ only activates when a model is bundled, so behavior without one is unchanged:
 
     Target(role="button", text="Save", window="Editor").click()
 
-#### Enabling AI vision
+#### The bundled model
 
-Drop a YOLO-format ONNX model into `vendor/models/` (source tree) or
-`models/` (portable build folder), for example `models/ui_detect.onnx`. Class
-names are read from the model metadata when present, otherwise from a
-`ui_detect.labels` file next to it (one class name per line), otherwise the
-default label list above is assumed. Everything works fully offline - the
+A model ships in the box: Microsoft **OmniParser icon-detect** (12 MB,
+YOLO-based, AGPL-3.0 licensed weights - see `models/`), trained specifically
+to find interactable elements on desktop and web screenshots. It exposes a
+single class (`element`), so with this model every `kind` matches everything
+and you narrow with `text=` instead:
+
+    findUI("any")                      every interactable element
+    findUI("button", text="Save")      elements whose OCR text contains Save
+
+Tips: scope the search (`findUI("any", region=someWindow)`) - the model sees
+a 640x640 downscale, so a window region gives far better hits than a
+multi-monitor desktop. Tune thresholds in `models/ui_detect.json`
+(`min_score`, `iou`) without touching code.
+
+#### Swapping in your own model
+
+Drop any YOLO-format ONNX model into `vendor/models/` (source tree) or
+`models/` (portable build folder). Class names are read from the model
+metadata when present, otherwise from a `<model>.labels` file next to it (one
+class name per line), otherwise the default label list above is assumed. A
+multi-class model (button/field/checkbox/...) makes the `kind` filter and the
+`Target` role fallback fully semantic. Everything works fully offline - the
 model file ships inside the app folder.
 
 #### Direct API (library use)
@@ -559,8 +576,10 @@ BUILDING.md.
   `rpa_framework` (source runs) or the exe was built without it.
 - **Clicks land oddly on multi-monitor setups** - keep the target app on the
   primary monitor for now, or scope with `Screen(1)`.
-- **findUI feels dumb (misses obvious buttons)** - no AI model is bundled, so
-  the shape heuristic is running; add a model under `models/` (see 5.11).
+- **findUI misses elements or finds too many** - scope it to a window region
+  and tune `models/ui_detect.json` (`min_score` down for more hits, up for
+  fewer); if the `models/` folder is empty the shape heuristic is running
+  instead of AI (see 5.11).
 - **Linux: "could not load the Qt platform plugin xcb" / "xcb-cursor0 is
   needed"** - start the app with `./run.sh` (not the raw `.bin`) and rebuild
   with the current build script if the folder predates the self-contained

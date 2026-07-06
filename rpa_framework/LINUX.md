@@ -111,9 +111,17 @@ any machine whose hardware differs from the build box.
   virtual display: `sudo dnf install -y xorg-x11-server-Xvfb` then
   `xvfb-run -a rpa-run test.sikuli`.
 - **Mouse/keyboard input:** `xdotool` (`sudo dnf install -y xdotool`, EPEL).
-- **Native accessibility (findElement/clickElement/Element Spy):** AT-SPI stack
-  - `at-spi2-core`, `gobject-introspection`, and PyGObject (`python3-gobject`),
-  with accessibility enabled in the session.
+- **Native accessibility (findElement/clickElement/Element Spy):** in current
+  folder builds the whole client stack (PyGObject, GObject typelibs,
+  `libatspi`) is compiled in when the BUILD venv can `import gi` - create it
+  with `python3 -m venv --system-site-packages` after
+  `sudo dnf install -y python3-gobject at-spi2-core`. The target machine then
+  needs no packages: the AT-SPI message bus is part of every GNOME/KDE
+  desktop session. If the spy shows nothing, enable accessibility once per
+  user session:
+  `gsettings set org.gnome.desktop.interface toolkit-accessibility true`
+  (a session setting, not a package install). For source runs (not the
+  folder build) install `python3-gobject` locally.
 - **Computer vision (find/click by image):** OpenCV + numpy (embedded in the
   binaries; `pip` for source use). OpenCV also needs `libGL`
   (`sudo dnf install -y mesa-libGL`).

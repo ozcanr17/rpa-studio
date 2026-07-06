@@ -53,6 +53,10 @@ def build_command(onefile=False, console=False, headless=False):
             cmd.append("--include-package=" + package)
         for name in nuitka_flags.QT_MODULES:
             cmd.append("--include-module={}.{}".format(module, name))
+    for package, plugin in nuitka_flags.OPTIONAL_PLUGINS:
+        if importlib.util.find_spec(package) is not None:
+            cmd.append("--enable-plugin=" + plugin)
+            cmd.append("--include-package=" + package)
     for package in nuitka_flags.OPTIONAL_PACKAGES:
         if importlib.util.find_spec(package) is not None:
             cmd.append("--include-package=" + package)
@@ -188,14 +192,18 @@ def bundle_linux_libs(target_root):
                 binaries.append(os.path.join(base, name))
     folders = _qt_wheel_lib_dirs() + list(nuitka_flags.LINUX_LIB_DIRS)
     cache = _shared_entries(_run_lines(["ldconfig", "-p"]))
-    queue = []
+    seeds = []
     if qt_lib_dir is not None:
-        for name in nuitka_flags.LINUX_EXTRA_SO:
-            path = _system_lib(name, folders, cache)
-            if path is not None:
-                queue.append((name, path))
-            elif name not in present:
-                print("linux-libs: MISSING on build machine: " + name)
+        seeds.extend(nuitka_flags.LINUX_EXTRA_SO)
+    if importlib.util.find_spec("gi") is not None:
+        seeds.extend(nuitka_flags.LINUX_GI_SO)
+    queue = []
+    for name in seeds:
+        path = _system_lib(name, folders, cache)
+        if path is not None:
+            queue.append((name, path))
+        elif name not in present:
+            print("linux-libs: MISSING on build machine: " + name)
     for path in binaries:
         queue.extend(_external_deps(path, root_real).items())
     copied = []

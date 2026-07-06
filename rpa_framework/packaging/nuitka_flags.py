@@ -12,7 +12,9 @@ INCLUDE_PACKAGES = ("rpa_framework",)
 OPTIONAL_PACKAGES = ("comtypes", "pywinauto", "mss", "pytesseract", "onnxruntime")
 PACKAGE_DATA = ("onnxruntime",)
 NATIVE_LIB_PACKAGES = (("onnxruntime", "capi"),)
+OPTIONAL_PLUGINS = (("gi", "gi"),)
 LINUX_QT_ANCHORS = ("libQt6XcbQpa.so", "libQt6Core.so")
+LINUX_GI_SO = ("libatspi.so.0",)
 LINUX_EXTRA_SO = (
     "libxcb-cursor.so.0",
     "libxkbcommon.so.0",
